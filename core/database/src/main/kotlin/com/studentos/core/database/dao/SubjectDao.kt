@@ -23,6 +23,9 @@ interface SubjectDao {
     @Update
     suspend fun update(subject: SubjectEntity)
 
+    @Query("UPDATE subjects SET name = :newName WHERE id = :id")
+    suspend fun rename(id: Long, newName: String)
+
     @Query("UPDATE subjects SET archived_at = :archivedAt WHERE id = :id")
     suspend fun archive(id: Long, archivedAt: Long)
 

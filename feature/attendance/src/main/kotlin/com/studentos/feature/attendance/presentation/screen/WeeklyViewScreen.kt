@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +42,7 @@ fun WeeklyViewScreen(
     viewModel: WeeklyViewModel,
     onNavigateToCalendar: () -> Unit,
     onNavigateToAnalytics: () -> Unit = {},
+    onNavigateToEditTimetable: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -50,6 +52,9 @@ fun WeeklyViewScreen(
             TopAppBar(
                 title = { Text("Attendance") },
                 actions = {
+                    IconButton(onClick = onNavigateToEditTimetable) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Timetable")
+                    }
                     IconButton(onClick = onNavigateToAnalytics) {
                         Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Analytics")
                     }

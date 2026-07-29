@@ -27,6 +27,37 @@ class SubjectRepositoryImpl @Inject constructor(
         return subjectDao.getSubjectById(id)
     }
 
+    override suspend fun addSubject(name: String): AppResult<Long> {
+        return try {
+            val trimmedName = name.trim()
+            if (trimmedName.isBlank()) {
+                return AppResult.Failure(AppError.ValidationError("Subject name cannot be empty"))
+            }
+            val existing = subjectDao.getByName(trimmedName)
+            if (existing != null) {
+                return AppResult.Failure(AppError.ValidationError("Subject already exists"))
+            }
+            val newEntity = SubjectEntity(name = trimmedName)
+            val newId = subjectDao.insert(newEntity)
+            AppResult.Success(newId)
+        } catch (e: Exception) {
+            AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to add subject"))
+        }
+    }
+
+    override suspend fun renameSubject(id: Long, newName: String): AppResult<Unit> {
+        return try {
+            val trimmedName = newName.trim()
+            if (trimmedName.isBlank()) {
+                return AppResult.Failure(AppError.ValidationError("Subject name cannot be empty"))
+            }
+            subjectDao.rename(id, trimmedName)
+            AppResult.Success(Unit)
+        } catch (e: Exception) {
+            AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to rename subject"))
+        }
+    }
+
     override suspend fun archiveSubject(id: Long): AppResult<Unit> {
         return try {
             val now = System.currentTimeMillis()

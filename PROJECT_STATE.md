@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-07-29 (Task 2.6 complete)
+> **Last updated:** 2026-07-30 (Task 2.9 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -492,6 +492,33 @@ StudentOS/
 
 ---
 
+### Task 2.7 — RecalibrationUseCase ✅
+- Created `RecalibrationUseCase` domain use case executing startup verification and recalibration pass directly from raw `ClassEvent` records (`backend-blueprint.md` §T6)
+- Created `RecalibrationUseCaseTest` unit test suite verifying startup recalculation success and database error handling via `AppResult.Failure`
+
+---
+
+### Task 2.8 — Timetable Customisation & EditTimetableScreen ✅
+- Added `getAllSlots(): Flow<List<TimetableSlotEntity>>` Room `@Query` to `TimetableSlotDao` (`:core:database`)
+- Created `EditTimetableUiState` sealed interface (`Loading`, `Success`, `Error`)
+- Created `@HiltViewModel` `EditTimetableViewModel` managing timetable slot CRUD operations and reactive state flow
+- Created `EditTimetableScreen` Compose root screen with day selector tabs (Mon–Sun), slot list, edit/delete actions, delete confirmation dialog, and modal bottom sheet form for adding/editing slots (subject, start/end time, location, week parity)
+- Registered `edit-timetable` route in `AttendanceNavGraph.kt` and wired `WeeklyViewScreen` top bar edit action
+- Created `EditTimetableViewModelTest` unit test suite verifying slot CRUD operations and day selection
+
+---
+
+### Task 2.9 — Subject Management (Add, Rename, Archive) ✅
+- Added `@Query("UPDATE subjects SET name = :newName WHERE id = :id") suspend fun rename(id: Long, newName: String)` to `SubjectDao` (`:core:database`)
+- Added `addSubject(name: String)` and `renameSubject(id: Long, newName: String)` to `SubjectRepository` & `SubjectRepositoryImpl` (`:feature:attendance`)
+- Created `ManageSubjectsUiState` sealed interface (`Loading`, `Success`, `Error`)
+- Created `@HiltViewModel` `ManageSubjectsViewModel` managing subject addition, renaming, archiving, and reactive state flow
+- Created `ManageSubjectsScreen` Compose root screen displaying active and archived subject lists, add/rename dialogs, and archive confirmation dialog
+- Registered `manage-subjects` route in `AttendanceNavGraph.kt`
+- Created `ManageSubjectsViewModelTest` unit test suite verifying subject creation, renaming, archiving, and reactive state updates
+
+---
+
 ## Current Module Structure
 
 ```
@@ -525,7 +552,7 @@ StudentOS/
 │   └── ui/                       ← :core:ui (Compose, no Hilt)
 │
 └── feature/
-    ├── attendance/               ← :feature:attendance (Compose, Hilt, KSP, ML Kit OCR, WeeklyViewScreen, CalendarViewScreen, AttendanceAnalyticsScreen, AttendanceNavGraph, ViewModels, BunkCalculator)
+    ├── attendance/               ← :feature:attendance (Compose, Hilt, KSP, ML Kit OCR, WeeklyViewScreen, CalendarViewScreen, AttendanceAnalyticsScreen, EditTimetableScreen, ManageSubjectsScreen, AttendanceNavGraph, ViewModels, BunkCalculator, RecalibrationUseCase)
     ├── assignments/              ← :feature:assignments
     ├── coding/                   ← :feature:coding (+ kotlin-serialization)
     ├── projects/                 ← :feature:projects
@@ -552,8 +579,7 @@ StudentOS/
 
 ## Next Tasks (Group 2 — Core Business Logic & Repositories: Attendance Engine)
 
-- [ ] **2.7** [S] `RecalibrationUseCase`
-- [ ] **2.8** [S] Timetable Customisation & `EditTimetableScreen`
+- [ ] **2.10** [M] ML Kit Timetable OCR Parser & `OcrPreviewScreen`
 - [ ] **2.7** [S] `RecalibrationUseCase`
 - [ ] **2.8** [S] Timetable Customisation & `EditTimetableScreen`
 

@@ -29,6 +29,9 @@ interface TimetableSlotDao {
     @Query("DELETE FROM timetable_slots")
     suspend fun deleteAll()
 
+    @Query("SELECT * FROM timetable_slots ORDER BY day_of_week ASC, start_time ASC")
+    fun getAllSlots(): Flow<List<TimetableSlotEntity>>
+
     @Query("SELECT * FROM timetable_slots WHERE subject_id = :subjectId ORDER BY day_of_week ASC, start_time ASC")
     fun getSlotsForSubject(subjectId: Long): Flow<List<TimetableSlotEntity>>
 

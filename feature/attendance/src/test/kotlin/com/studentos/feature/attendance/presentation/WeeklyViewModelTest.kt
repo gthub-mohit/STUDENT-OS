@@ -37,6 +37,8 @@ class WeeklyViewModelTest {
         }
         override fun getAllSubjectsIncludingArchived(): Flow<List<SubjectEntity>> = error("Not needed")
         override fun getSubjectById(id: Long): Flow<SubjectEntity?> = error("Not needed")
+        override suspend fun addSubject(name: String): AppResult<Long> = error("Not needed")
+        override suspend fun renameSubject(id: Long, newName: String): AppResult<Unit> = error("Not needed")
         override suspend fun archiveSubject(id: Long): AppResult<Unit> = error("Not needed")
     }
 

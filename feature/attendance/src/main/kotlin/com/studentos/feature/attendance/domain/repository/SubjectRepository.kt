@@ -11,5 +11,7 @@ interface SubjectRepository {
     fun getActiveSubjects(): Flow<List<SubjectEntity>>
     fun getAllSubjectsIncludingArchived(): Flow<List<SubjectEntity>>
     fun getSubjectById(id: Long): Flow<SubjectEntity?>
+    suspend fun addSubject(name: String): AppResult<Long>
+    suspend fun renameSubject(id: Long, newName: String): AppResult<Unit>
     suspend fun archiveSubject(id: Long): AppResult<Unit>
 }
