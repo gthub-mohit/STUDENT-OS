@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AndroidManifest.xml — :app module
+
+    Single-activity architecture. MainActivity is the only Activity.
+    All navigation is handled by the Compose Navigation Component (task 0.4).
+
+    Permissions required by later tasks are declared here now so they are
+    visible in one place. Each permission is annotated with the task that
+    activates it.
+-->
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ── Permissions ────────────────────────────────────────────────────── -->
+
+    <!-- Task 4.2 / 6.3: CP sync and LLM API calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Task 7.x: Post notifications (Android 13+, API 33+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Task 7.x: Reschedule alarms after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Task 2.1: Camera access for OCR timetable import -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Task 8.x: Read/write files for backup export (SAF does not need these
+         on API 26+, but declared for older edge cases) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <application
+        android:name=".StudentOsApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.StudentOS">
+
+        <!--
+            Single Activity — all navigation is Compose-based.
+            Exported true so notification deep-links can launch it.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.StudentOS">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Deep-link intent filter for notification navigation (task 7.x / 9.x).
+                Scheme: studentos://
+                All deep-link routes defined in folder-structure.md §6.1 are
+                handled here. The Compose NavHost resolves the route from the URI.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="studentos" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            BroadcastReceiver for rescheduling notifications after device reboot.
+            Implemented in task 7.4 (NotificationRescheduler).
+            Declared here now so the manifest is complete.
+        -->
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+            WorkManager initialisation via HiltWorkerFactory (task 0.3).
+            Disables the default WorkManager initializer so we can supply
+            the Hilt-aware factory in StudentOsApp.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+    </application>
+
+</manifest>

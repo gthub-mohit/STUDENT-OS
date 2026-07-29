@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    strings.xml — :app module
+    All user-visible strings are defined here.
+    Feature-specific strings live in their respective feature module res/values/strings.xml.
+-->
+<resources>
+    <string name="app_name">Student OS</string>
+</resources>

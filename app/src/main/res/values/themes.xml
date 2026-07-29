@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    themes.xml — :app module
+
+    Base XML theme applied in AndroidManifest.xml android:theme.
+    Controls only the window chrome (background colour, ActionBar removal)
+    before Compose renders. The full Material 3 design system — dynamic
+    colour, typography, shapes — is implemented in Compose via StudentOsTheme
+    in :core:ui (task 0.2).
+
+    Parent choice: Theme.AppCompat.DayNight.NoActionBar
+      - DayNight  : follows the system light/dark setting automatically.
+      - NoActionBar: removes the legacy ActionBar; we use a Compose TopAppBar.
+      - AppCompat is used (not MaterialComponents) because Material Components
+        for Views is not a dependency of :app. AppCompat is already pulled in
+        transitively and is sufficient for a pure-Compose activity window.
+
+    Edge-to-edge layout is handled at runtime in MainActivity via
+    androidx.activity.enableEdgeToEdge(), not via XML theme attributes.
+-->
+<resources>
+    <style name="Theme.StudentOS" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!--
+            Transparent window background prevents a white/black flash on cold
+            launch before the first Compose frame is drawn.
+        -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    data_extraction_rules.xml
+    Controls which files are included in cloud backup (Android 12+ API 31+).
+
+    Student OS is an offline-first app with no cloud sync in V1.
+    All backups are user-initiated JSON exports (task 8.1).
+    System cloud backup is intentionally disabled for all app data to
+    prevent uncontrolled data exfiltration.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Device-to-device transfers are also excluded. Users must use
+             the in-app JSON export/import flow (task 8.x). -->
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
