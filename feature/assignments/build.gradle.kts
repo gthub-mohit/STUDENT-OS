@@ -43,6 +43,9 @@ dependencies {
     // Hilt — required by the hilt plugin applied above.
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.compiler)
 
     // Lint — feature-to-feature dependency guard.
     lintChecks(project(":lint-checks"))

@@ -10,6 +10,7 @@ import com.studentos.core.events.AppEvent
 import com.studentos.core.events.AppEventBus
 import com.studentos.core.events.AppResult
 import com.studentos.feature.assignments.domain.repository.AssignmentRepository
+import com.studentos.feature.assignments.domain.scheduler.AssignmentReminderScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -26,7 +27,8 @@ import javax.inject.Inject
 class AssignmentRepositoryImpl @Inject constructor(
     private val assignmentDao: AssignmentDao,
     private val eventBus: AppEventBus,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val reminderScheduler: AssignmentReminderScheduler? = null
 ) : AssignmentRepository {
 
     var openInputStreamProvider: (Context, String) -> InputStream? = { ctx, uriStr ->
@@ -80,6 +82,8 @@ class AssignmentRepositoryImpl @Inject constructor(
                 return@withContext AppResult.Failure(AppError.ValidationError("Assignment title cannot be empty"))
             }
             val newId = assignmentDao.insert(assignment)
+            val created = assignment.copy(id = newId)
+            reminderScheduler?.scheduleReminder(created)
             AppResult.Success(newId)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to create assignment"))
@@ -91,6 +95,11 @@ class AssignmentRepositoryImpl @Inject constructor(
             val now = System.currentTimeMillis()
             assignmentDao.updateStatus(id, newStatus, now)
             eventBus.emit(AppEvent.AssignmentStatusChanged(assignmentId = id, newStatus = newStatus))
+            
+            val updated = assignmentDao.getAssignmentById(id).firstOrNull()
+            if (updated != null) {
+                reminderScheduler?.scheduleReminder(updated)
+            }
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to update assignment status"))
@@ -101,6 +110,11 @@ class AssignmentRepositoryImpl @Inject constructor(
         try {
             val now = System.currentTimeMillis()
             assignmentDao.updateDeadline(id, deadline, now)
+            
+            val updated = assignmentDao.getAssignmentById(id).firstOrNull()
+            if (updated != null) {
+                reminderScheduler?.scheduleReminder(updated)
+            }
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to update deadline"))
@@ -111,6 +125,11 @@ class AssignmentRepositoryImpl @Inject constructor(
         try {
             val now = System.currentTimeMillis()
             assignmentDao.updateReminderLeadMs(id, leadMs, now)
+            
+            val updated = assignmentDao.getAssignmentById(id).firstOrNull()
+            if (updated != null) {
+                reminderScheduler?.scheduleReminder(updated)
+            }
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to update reminder lead"))
@@ -127,6 +146,7 @@ class AssignmentRepositoryImpl @Inject constructor(
                 deleteLocalFile(path)
             }
 
+            reminderScheduler?.cancelReminder(id)
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to delete assignment"))

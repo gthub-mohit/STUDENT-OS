@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-07-30 (Task 3.4 complete)
+> **Last updated:** 2026-07-30 (Task 3.5 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -542,6 +542,17 @@ StudentOS/
 - Implemented automatic file deletion when an attachment is replaced, removed, or when its assignment is deleted via `deleteAssignment(id)`.
 - Updated `AttachmentRow` and `AssignmentDetailViewModel` to handle file adding, replacing, and removal seamlessly.
 - Created unit tests verifying file import, replacement, removal, orphaned file deletion, and stream copy failure error handling.
+
+### Task 3.5 — Assignment Reminder Worker (WorkManager) ✅
+- Created `@HiltWorker` `AssignmentReminderWorker` executing background notification dispatch when assignment reminder triggers.
+- Created `AssignmentReminderScheduler` interface and `AssignmentReminderSchedulerImpl` scheduling `OneTimeWorkRequest` at `deadline - reminder_lead_ms`.
+- Tagged every work request with `assignment_<id>`.
+- Replaced existing reminders when rescheduling via `ExistingWorkPolicy.REPLACE`.
+- Handled per-assignment `reminderLeadMs` with fallback to global settings `default_assignment_reminder_lead_ms` (1 hour default).
+- Implemented automatic reminder cancellation when assignment status transitions to `SUBMITTED` or `COMPLETED`.
+- Prevented scheduling of reminders whose trigger time has already passed (`triggerEpoch <= nowEpoch`).
+- Bound `AssignmentReminderScheduler` in `AssignmentsModule` and injected into `AssignmentRepositoryImpl`.
+- Created comprehensive unit test suite `AssignmentReminderSchedulerTest` covering all 7 required scheduling scenarios.
 
 ---
 
