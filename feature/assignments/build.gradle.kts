@@ -30,6 +30,16 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:database"))
+    implementation(project(":core:events"))
+
+    // Compose BOM & UI runtime
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.navigation.compose)
+    implementation(libs.hilt.navigation.compose)
+
     // Hilt — required by the hilt plugin applied above.
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
@@ -37,6 +47,7 @@ dependencies {
     // Lint — feature-to-feature dependency guard.
     lintChecks(project(":lint-checks"))
 
-    // Task 3.x: :core:database, :core:events, :core:ui, :core:notifications,
-    //            WorkManager, Compose, and additional dependencies added here.
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

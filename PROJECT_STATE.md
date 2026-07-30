@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-07-30 (Task 2.10 complete)
+> **Last updated:** 2026-07-30 (Task 3.4 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -519,12 +519,29 @@ StudentOS/
 
 ---
 
-### Task 2.10 — ML Kit Timetable OCR Parser & OcrPreviewScreen ✅
-- Enhanced `OcrViewModel` (`:feature:attendance`) with `addSlot`, `updateSlot`, `removeSlot`, `confirmImport`, and `Dispatchers.IO` async image processing
-- Updated `OcrPreviewScreen` Compose UI with photo picker launcher (`ActivityResultContracts.GetContent()`), back navigation button, add/edit/delete slot dialogs, amber warning card for low-confidence (<80%) OCR fields, and timetable overwrite confirmation dialog
-- Wired `onNavigateToOcrPreview` action button in `WeeklyViewScreen` top bar and `AttendanceNavGraph.kt`
-- Created `TimetableFieldMapperTest` unit test suite verifying 12h/24h time normalization, day detection, location extraction, and confidence thresholding
-- Created `OcrViewModelTest` unit test suite verifying image processing state transitions, slot CRUD actions, import confirmation, and overwrite replace dialogs
+### Task 3.2 — Filtered Assignment Views (`Today`, `This_Week`, `Overdue`, `Completed`) ✅
+- Created `AssignmentFilter` domain enum in `:feature:assignments` (`TODAY`, `THIS_WEEK`, `OVERDUE`, `COMPLETED`)
+- Created `GetFilteredAssignmentsUseCase` domain use case calculating system local timezone epoch-ms boundaries (start of day, end of day, end of 7-day week, current epoch-ms for overdue) and executing Room DAO filter queries via `AssignmentRepository`
+- Confirmed `OVERDUE` remains a view-level query filter strictly without ever writing `OVERDUE` to the database `status` column
+- Created `GetFilteredAssignmentsUseCaseTest` unit test suite verifying date calculations, boundary timestamps, status query filters, and empty result flows
+
+### Task 3.3 — Assignment UI (List & Detail Screens) ✅
+- Created `AssignmentListUiState` and `AssignmentDetailUiState` sealed interfaces (`:feature:assignments`).
+- Created reusable Jetpack Compose components: `PriorityBadge`, `StatusChip`, `DeadlineCountdown`, `AssignmentFilterTabs`, `AssignmentCard`, `AttachmentRow`.
+- Created `AssignmentListViewModel` managing list state, filter selection, status cycling, and delete confirmation prompt.
+- Created `AssignmentDetailViewModel` managing detail view, status cycling, attachment removal, and delete confirmation prompt.
+- Created `AssignmentListScreen` and `AssignmentDetailScreen` Compose screens.
+- Created `AssignmentsNavGraph.kt` navigation builder for `assignments/list` and `assignments/detail/{id}` routes.
+- Implemented `ConfirmDialog` confirmation prompt for deleting `PENDING` or `IN_PROGRESS` assignments (direct delete for `COMPLETED`/`SUBMITTED`).
+- Created unit test suites (`AssignmentListViewModelTest` & `AssignmentDetailViewModelTest`) with custom `FakeSubjectDao` and main coroutine dispatcher rule.
+
+### Task 3.4 — File Attachment Support ✅
+- Integrated `ActivityResultContracts.GetContent` for file selection in `AssignmentDetailScreen`.
+- Implemented `attachFile(id, sourceUriString)` in `AssignmentRepositoryImpl` running on `Dispatchers.IO`.
+- Copied picked files to `filesDir/attachments/<uuid>.<ext>` and stored ONLY relative path in `attachment_uri`.
+- Implemented automatic file deletion when an attachment is replaced, removed, or when its assignment is deleted via `deleteAssignment(id)`.
+- Updated `AttachmentRow` and `AssignmentDetailViewModel` to handle file adding, replacing, and removal seamlessly.
+- Created unit tests verifying file import, replacement, removal, orphaned file deletion, and stream copy failure error handling.
 
 ---
 
@@ -562,7 +579,7 @@ StudentOS/
 │
 └── feature/
     ├── attendance/               ← :feature:attendance (Compose, Hilt, KSP, ML Kit OCR, WeeklyViewScreen, CalendarViewScreen, AttendanceAnalyticsScreen, EditTimetableScreen, ManageSubjectsScreen, OcrPreviewScreen, AttendanceNavGraph, ViewModels, BunkCalculator, RecalibrationUseCase, ImportTimetableUseCase, OcrProcessor, TimetableFieldMapper)
-    ├── assignments/              ← :feature:assignments
+    ├── assignments/              ← :feature:assignments (Compose, Hilt, KSP, AssignmentRepository, AssignmentRepositoryImpl, CreateAssignmentUseCase, UpdateAssignmentStatusUseCase, GetFilteredAssignmentsUseCase, AssignmentFilter, AssignmentsModule)
     ├── coding/                   ← :feature:coding (+ kotlin-serialization)
     ├── projects/                 ← :feature:projects
     ├── intelligence/             ← :feature:intelligence
@@ -588,7 +605,7 @@ StudentOS/
 
 ## Next Tasks (Group 3 — Assignments & Deadlines Module)
 
-- [ ] **3.1** [M] Create Room Entities and DAOs for Assignment Engine (`AssignmentEntity`, `AssignmentAttachmentEntity`)
+- [ ] **3.3** [M] Build `AssignmentListScreen` and `AssignmentDetailScreen` (Compose). Show priority badge, deadline countdown, status chip. Confirmation prompt on delete of `PENDING` or `IN_PROGRESS` assignments.
 
 ---
 
