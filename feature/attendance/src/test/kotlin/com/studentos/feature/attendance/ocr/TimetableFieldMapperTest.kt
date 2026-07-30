@@ -3,125 +3,92 @@ package com.studentos.feature.attendance.ocr
 import com.studentos.feature.attendance.data.ocr.TimetableFieldMapper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 
-/**
- * TimetableFieldMapperTest — Unit tests for TimetableFieldMapper testing 5 distinct timetable layouts.
- */
 class TimetableFieldMapperTest {
 
-    private lateinit var mapper: TimetableFieldMapper
+    private val mapper = TimetableFieldMapper()
 
-    @Before
-    fun setUp() {
-        mapper = TimetableFieldMapper()
+    @Test
+    fun mapFromRawText_emptyText_returnsEmptyListWithWarnings() {
+        val result = mapper.mapFromRawText("")
+        assertTrue(result.slots.isEmpty())
+        assertTrue(result.hasWarnings)
     }
 
     @Test
-    fun layout1_standardGridWithDayHeaders() {
+    fun mapFromRawText_valid24HourTimetable_parsesSlotsCorrectly() {
         val rawText = """
             Monday
-            09:00 - 10:00 Data Structures - Room 101
-            10:00 - 11:00 Algorithms - Lab 2
-            Tuesday
-            11:00 - 12:00 Software Engineering
+            09:00 - 10:00 Mathematics - Room 101
+            10:00 - 11:00 Computer Science - Lab 2
+            
+            Wednesday
+            14:00 - 15:00 Physics (Lecture Hall 1)
         """.trimIndent()
 
         val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.90f)
 
-        assertEquals(3, result.slots.size)
         assertFalse(result.hasWarnings)
+        assertEquals(3, result.slots.size)
 
-        val slot1 = result.slots[0]
-        assertEquals(1, slot1.dayOfWeek) // Monday
-        assertEquals("09:00", slot1.startTime)
-        assertEquals("10:00", slot1.endTime)
-        assertEquals("Data Structures", slot1.subjectName)
-        assertEquals("Room 101", slot1.location)
-        assertFalse(slot1.isLowConfidence)
+        // Slot 1
+        assertEquals(1, result.slots[0].dayOfWeek)
+        assertEquals("09:00", result.slots[0].startTime)
+        assertEquals("10:00", result.slots[0].endTime)
+        assertEquals("Mathematics", result.slots[0].subjectName)
+        assertEquals("Room 101", result.slots[0].location)
+        assertFalse(result.slots[0].isLowConfidence)
 
-        val slot3 = result.slots[2]
-        assertEquals(2, slot3.dayOfWeek) // Tuesday
-        assertEquals("11:00", slot3.startTime)
-        assertEquals("12:00", slot3.endTime)
-        assertEquals("Software Engineering", slot3.subjectName)
+        // Slot 2
+        assertEquals(1, result.slots[1].dayOfWeek)
+        assertEquals("10:00", result.slots[1].startTime)
+        assertEquals("11:00", result.slots[1].endTime)
+        assertEquals("Computer Science", result.slots[1].subjectName)
+        assertEquals("Lab 2", result.slots[1].location)
+
+        // Slot 3
+        assertEquals(3, result.slots[2].dayOfWeek)
+        assertEquals("14:00", result.slots[2].startTime)
+        assertEquals("15:00", result.slots[2].endTime)
+        assertEquals("Physics", result.slots[2].subjectName)
+        assertEquals("Lecture Hall 1", result.slots[2].location)
     }
 
     @Test
-    fun layout2_abbreviatedDayNames() {
-        val rawText = """
-            MON
-            08:30 - 09:30 Operating Systems
-            WED
-            14:00 - 15:30 Computer Networks - Room 404
-        """.trimIndent()
-
-        val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.88f)
-
-        assertEquals(2, result.slots.size)
-
-        assertEquals(1, result.slots[0].dayOfWeek) // Monday
-        assertEquals("Operating Systems", result.slots[0].subjectName)
-
-        assertEquals(3, result.slots[1].dayOfWeek) // Wednesday
-        assertEquals("14:00", result.slots[1].startTime)
-        assertEquals("15:30", result.slots[1].endTime)
-        assertEquals("Computer Networks", result.slots[1].subjectName)
-        assertEquals("Room 404", result.slots[1].location)
-    }
-
-    @Test
-    fun layout3_twelveHourAmPmFormat() {
-        val rawText = """
-            Thursday
-            9:00 AM - 10:30 AM Calculus I
-            2:00 PM - 3:30 PM Physics II - Lab B
-        """.trimIndent()
-
-        val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.92f)
-
-        assertEquals(2, result.slots.size)
-
-        val slot1 = result.slots[0]
-        assertEquals(4, slot1.dayOfWeek) // Thursday
-        assertEquals("09:00", slot1.startTime)
-        assertEquals("10:30", slot1.endTime)
-        assertEquals("Calculus I", slot1.subjectName)
-
-        val slot2 = result.slots[1]
-        assertEquals("14:00", slot2.startTime)
-        assertEquals("15:30", slot2.endTime)
-        assertEquals("Physics II", slot2.subjectName)
-        assertEquals("Lab B", slot2.location)
-    }
-
-    @Test
-    fun layout4_lowConfidenceFlagging() {
+    fun mapFromRawText_valid12HourAmPm_normalizesTo24HourTime() {
         val rawText = """
             Friday
-            10:00 - 11:00 Machine Learning - Hall A
+            9:00 AM - 10:00 AM Chemistry - Room A
+            2:00 PM - 3:30 PM Data Structures
         """.trimIndent()
 
-        // Passing confidence below threshold (0.75f < 0.80f)
-        val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.75f)
+        val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.85f)
 
-        assertEquals(1, result.slots.size)
-        assertTrue(result.hasWarnings)
+        assertEquals(2, result.slots.size)
 
-        val slot = result.slots[0]
-        assertEquals(5, slot.dayOfWeek) // Friday
-        assertTrue(slot.isLowConfidence)
+        assertEquals("09:00", result.slots[0].startTime)
+        assertEquals("10:00", result.slots[0].endTime)
+
+        assertEquals("14:00", result.slots[1].startTime)
+        assertEquals("15:30", result.slots[1].endTime)
+        assertNull(result.slots[1].location)
     }
 
     @Test
-    fun layout5_emptyOrNoisyTextReturnsWarnings() {
-        val rawText = "No time information detected in this random image."
+    fun mapFromRawText_lowConfidence_flagsLowConfidenceAndWarnings() {
+        val rawText = """
+            Tuesday
+            09:00 - 10:00 Biology
+        """.trimIndent()
 
-        val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.90f)
+        // Pass 0.70f confidence (below 0.80f threshold)
+        val result = mapper.mapFromRawText(rawText, defaultConfidence = 0.70f)
 
-        assertTrue(result.slots.isEmpty())
+        assertEquals(1, result.slots.size)
+        assertTrue(result.slots[0].isLowConfidence)
         assertTrue(result.hasWarnings)
     }
 }

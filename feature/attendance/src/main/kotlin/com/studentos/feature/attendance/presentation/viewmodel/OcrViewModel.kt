@@ -8,6 +8,7 @@ import com.studentos.feature.attendance.data.ocr.OcrProcessor
 import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import com.studentos.feature.attendance.domain.usecase.ImportTimetableUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +38,7 @@ class OcrViewModel @Inject constructor(
     val uiState: StateFlow<OcrUiState> = _uiState.asStateFlow()
 
     fun processImage(bitmap: Bitmap) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = OcrUiState.Loading
             val result = ocrProcessor.extract(bitmap)
             _uiState.value = OcrUiState.Content(
@@ -45,6 +46,13 @@ class OcrViewModel @Inject constructor(
                 hasWarnings = result.hasWarnings
             )
         }
+    }
+
+    fun addSlot(slot: ParsedTimetableSlot) {
+        val currentState = _uiState.value as? OcrUiState.Content ?: return
+        val updatedList = currentState.slots + slot
+        val hasWarnings = updatedList.any { it.isLowConfidence }
+        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings)
     }
 
     fun updateSlot(index: Int, updatedSlot: ParsedTimetableSlot) {
@@ -71,7 +79,7 @@ class OcrViewModel @Inject constructor(
 
     fun confirmImport(replaceExisting: Boolean = false) {
         val currentState = _uiState.value as? OcrUiState.Content ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val result = importTimetableUseCase(
                 slots = currentState.slots,
                 replaceExisting = replaceExisting
@@ -84,7 +92,7 @@ class OcrViewModel @Inject constructor(
                     if (!replaceExisting) {
                         _uiState.value = currentState.copy(showReplaceDialog = true)
                     } else {
-                        _uiState.value = OcrUiState.Error("Import Failed")
+                        _uiState.value = OcrUiState.Error("Import Failed: ${result.reason}")
                     }
                 }
             }

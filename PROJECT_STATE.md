@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-07-30 (Task 2.9 complete)
+> **Last updated:** 2026-07-30 (Task 2.10 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -519,6 +519,15 @@ StudentOS/
 
 ---
 
+### Task 2.10 — ML Kit Timetable OCR Parser & OcrPreviewScreen ✅
+- Enhanced `OcrViewModel` (`:feature:attendance`) with `addSlot`, `updateSlot`, `removeSlot`, `confirmImport`, and `Dispatchers.IO` async image processing
+- Updated `OcrPreviewScreen` Compose UI with photo picker launcher (`ActivityResultContracts.GetContent()`), back navigation button, add/edit/delete slot dialogs, amber warning card for low-confidence (<80%) OCR fields, and timetable overwrite confirmation dialog
+- Wired `onNavigateToOcrPreview` action button in `WeeklyViewScreen` top bar and `AttendanceNavGraph.kt`
+- Created `TimetableFieldMapperTest` unit test suite verifying 12h/24h time normalization, day detection, location extraction, and confidence thresholding
+- Created `OcrViewModelTest` unit test suite verifying image processing state transitions, slot CRUD actions, import confirmation, and overwrite replace dialogs
+
+---
+
 ## Current Module Structure
 
 ```
@@ -552,7 +561,7 @@ StudentOS/
 │   └── ui/                       ← :core:ui (Compose, no Hilt)
 │
 └── feature/
-    ├── attendance/               ← :feature:attendance (Compose, Hilt, KSP, ML Kit OCR, WeeklyViewScreen, CalendarViewScreen, AttendanceAnalyticsScreen, EditTimetableScreen, ManageSubjectsScreen, AttendanceNavGraph, ViewModels, BunkCalculator, RecalibrationUseCase)
+    ├── attendance/               ← :feature:attendance (Compose, Hilt, KSP, ML Kit OCR, WeeklyViewScreen, CalendarViewScreen, AttendanceAnalyticsScreen, EditTimetableScreen, ManageSubjectsScreen, OcrPreviewScreen, AttendanceNavGraph, ViewModels, BunkCalculator, RecalibrationUseCase, ImportTimetableUseCase, OcrProcessor, TimetableFieldMapper)
     ├── assignments/              ← :feature:assignments
     ├── coding/                   ← :feature:coding (+ kotlin-serialization)
     ├── projects/                 ← :feature:projects
@@ -577,11 +586,9 @@ StudentOS/
 
 ---
 
-## Next Tasks (Group 2 — Core Business Logic & Repositories: Attendance Engine)
+## Next Tasks (Group 3 — Assignments & Deadlines Module)
 
-- [ ] **2.10** [M] ML Kit Timetable OCR Parser & `OcrPreviewScreen`
-- [ ] **2.7** [S] `RecalibrationUseCase`
-- [ ] **2.8** [S] Timetable Customisation & `EditTimetableScreen`
+- [ ] **3.1** [M] Create Room Entities and DAOs for Assignment Engine (`AssignmentEntity`, `AssignmentAttachmentEntity`)
 
 ---
 

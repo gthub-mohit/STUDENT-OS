@@ -27,7 +27,8 @@ fun NavGraphBuilder.attendanceNavGraph(navController: NavHostController) {
             viewModel = viewModel,
             onNavigateToCalendar = { navController.navigate("calendar") },
             onNavigateToAnalytics = { navController.navigate("analytics") },
-            onNavigateToEditTimetable = { navController.navigate("edit-timetable") }
+            onNavigateToEditTimetable = { navController.navigate("edit-timetable") },
+            onNavigateToOcrPreview = { navController.navigate("ocr-preview") }
         )
     }
 

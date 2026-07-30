@@ -43,6 +43,7 @@ fun WeeklyViewScreen(
     onNavigateToCalendar: () -> Unit,
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToEditTimetable: () -> Unit = {},
+    onNavigateToOcrPreview: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -52,6 +53,9 @@ fun WeeklyViewScreen(
             TopAppBar(
                 title = { Text("Attendance") },
                 actions = {
+                    IconButton(onClick = onNavigateToOcrPreview) {
+                        Icon(Icons.Default.Edit, contentDescription = "Scan Timetable")
+                    }
                     IconButton(onClick = onNavigateToEditTimetable) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Timetable")
                     }
