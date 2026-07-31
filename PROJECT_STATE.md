@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-07-30 (Task 3.5 complete)
+> **Last updated:** 2026-07-31 (Task 4.3 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -553,6 +553,30 @@ StudentOS/
 - Prevented scheduling of reminders whose trigger time has already passed (`triggerEpoch <= nowEpoch`).
 - Bound `AssignmentReminderScheduler` in `AssignmentsModule` and injected into `AssignmentRepositoryImpl`.
 - Created comprehensive unit test suite `AssignmentReminderSchedulerTest` covering all 7 required scheduling scenarios.
+
+### Task 4.1 — CodeChef & Codeforces API Clients (`:core:sync`) ✅
+- Created Retrofit API service interfaces `CodeChefApiService` and `CodeforcesApiService`.
+- Created Kotlinx Serializable DTOs: `CodeChefProfileDto`, `CodeChefProfileResponseDto`, `CodeChefContestDto`, `CodeforcesProfileDto`, `CodeforcesUserResponseDto`, `CodeforcesContestDto`, and `CodeforcesRatingResponseDto`.
+- Created `CodeChefMapper` and `CodeforcesMapper` mapping API responses to `CpProfileEntity` and `CpContestEntity` with safe fallback handling for null fields, invalid ratings, and missing optional data.
+- Created Hilt module `SyncModule` in `:core:sync` providing `@Named("cp") OkHttpClient`, `@Named("cp") Retrofit`, `CodeChefApiService`, and `CodeforcesApiService`.
+- Created unit test suites `CodeChefMapperTest` and `CodeforcesMapperTest` covering normal mapping, null fields, empty contest history, invalid DTO values, and missing optional fields.
+
+### Task 4.2 — CpSyncWorker & ContestReminderWorker (`:core:sync`) ✅
+- Created `@HiltWorker` `CpSyncWorker` executing periodic CP data refresh, database upserting, lookahead contest reminder scheduling, and `AppEvent.CpSyncCompleted` event emission.
+- Created `@HiltWorker` `ContestReminderWorker` posting high-priority notifications on channel `"CONTEST_REMINDER"`.
+- Implemented contest reminder lookahead query with duplicate prevention (`ExistingWorkPolicy.REPLACE`).
+- Documented best-effort Doze-mode execution behavior in code comment.
+- Created unit test suite `CpSyncWorkerTest` covering successful sync, empty profiles, API failure, partial platform failure, room data preservation, and reminder scheduling.
+
+### Task 4.3 — Coding Dashboard UI (`:feature:coding`) ✅
+- Created domain models `CpProfile` and `CpContest`.
+- Created domain contract `CpRepository` and data implementation `CpRepositoryImpl` mapping Room entities to domain models over reactive Flows.
+- Created `CpDashboardUiState` and `CpDashboardViewModel` exposing reactive `StateFlow<CpDashboardUiState>`.
+- Created UI components: `RatingBadge`, `ContestResultCard`, and `LastSyncedBanner`.
+- Created `CpDashboardScreen` handling loading state, empty state (`"No CP profile set up. Add your CodeChef or Codeforces handle in Settings → AI & Coding."`), profile stats, contest history, and last-synced banner.
+- Created `CodingNavGraph` declaring route `"coding/cp"`.
+- Created Hilt module `CodingModule` binding `CpRepository` to `CpRepositoryImpl`.
+- Created unit test suite `CpDashboardViewModelTest` covering loading, empty state, profile mapping, contest mapping, lastSynced timestamp, and Room Flow updates.
 
 ---
 

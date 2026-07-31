@@ -1,11 +1,5 @@
 /*
  * feature/coding/build.gradle.kts — :feature:coding
- *
- * Stub created in task 0.1. Full implementation in tasks 4.1–4.7.
- *
- * Allowed dependencies: :core:database, :core:events, :core:ui, :core:sync
- * Forbidden: any other :feature:* module.
- * Note: :feature:coding is the ONLY feature module permitted to depend on :core:sync.
  */
 plugins {
     alias(libs.plugins.android.library)
@@ -32,13 +26,28 @@ android {
 }
 
 dependencies {
-    // Hilt — required by the hilt plugin applied above.
+    implementation(project(":core:database"))
+    implementation(project(":core:events"))
+    implementation(project(":core:sync"))
+
+    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.hilt.navigation.compose)
+
+    // Compose BOM & Navigation
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.navigation.compose)
 
     // Lint — feature-to-feature dependency guard.
     lintChecks(project(":lint-checks"))
 
-    // Task 4.x: :core:database, :core:events, :core:ui, :core:sync,
-    //            Compose, and additional dependencies added here.
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

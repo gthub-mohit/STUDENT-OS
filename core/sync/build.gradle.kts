@@ -1,8 +1,7 @@
 /*
  * core/sync/build.gradle.kts — :core:sync
  *
- * Stub created in task 0.1. CP API clients (CodeChef, Codeforces),
- * CpSyncWorker, and ContestReminderWorker are implemented in tasks 4.1–4.2.
+ * CP API clients (CodeChef, Codeforces), CpSyncWorker, and ContestReminderWorker.
  */
 plugins {
     alias(libs.plugins.android.library)
@@ -26,10 +25,25 @@ android {
 }
 
 dependencies {
-    // Hilt — required by the hilt plugin applied above.
+    implementation(project(":core:database"))
+    implementation(project(":core:events"))
+
+    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.compiler)
 
-    // Task 4.x: :core:database, :core:events, Retrofit, WorkManager,
-    //            and additional dependencies added here.
+    // Retrofit & OkHttp
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.converter)
+    implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }
