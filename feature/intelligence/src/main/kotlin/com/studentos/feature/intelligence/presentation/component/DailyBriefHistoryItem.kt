@@ -95,7 +95,8 @@ fun DailyBriefHistoryItem(
                 Text(
                     text = "Score: ${summary.scoreActual} / ${summary.scoreTarget}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 if (formattedTime.isNotEmpty()) {
@@ -105,6 +106,16 @@ fun DailyBriefHistoryItem(
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
+            }
+
+            if (!summary.llmGuidance.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = summary.llmGuidance,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
             }
         }
     }

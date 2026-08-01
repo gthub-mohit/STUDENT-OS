@@ -1,11 +1,10 @@
 package com.studentos.feature.intelligence.presentation
 
 import androidx.lifecycle.SavedStateHandle
-import app.cash.turbine.test
 import com.studentos.feature.intelligence.domain.model.DailyBrief
 import com.studentos.feature.intelligence.domain.model.RecommendationCard
-import com.studentos.feature.intelligence.domain.usecase.GenerateDailyBriefUseCase
-import com.studentos.feature.intelligence.domain.usecase.GetDailyBriefUseCase
+import com.studentos.feature.intelligence.domain.repository.DailyBriefRepository
+import com.studentos.feature.intelligence.orchestrator.IntelligenceOrchestrator
 import com.studentos.feature.intelligence.presentation.viewmodel.DailyBriefViewModel
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -23,10 +22,12 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,8 +37,8 @@ class DailyBriefViewModelTest {
     private val fixedInstant = Instant.parse("2026-08-01T10:00:00Z")
     private val clock: Clock = Clock.fixed(fixedInstant, ZoneId.of("UTC"))
 
-    private val getDailyBriefUseCase: GetDailyBriefUseCase = mockk()
-    private val generateDailyBriefUseCase: GenerateDailyBriefUseCase = mockk()
+    private val repository: DailyBriefRepository = mockk()
+    private val orchestrator: IntelligenceOrchestrator = mockk()
 
     private lateinit var viewModel: DailyBriefViewModel
 
@@ -53,7 +54,8 @@ class DailyBriefViewModelTest {
 
     @Test
     fun initialState_autoGenerates_whenTodayBriefDoesNotExist() = runTest {
-        coEvery { getDailyBriefUseCase("2026-08-01") } returns flowOf(null)
+        val todayLocalDate = LocalDate.of(2026, 8, 1)
+        coEvery { repository.getBriefForDate("2026-08-01") } returns flowOf(null)
 
         val mockBrief = DailyBrief(
             date = "2026-08-01",
@@ -63,18 +65,18 @@ class DailyBriefViewModelTest {
             scoreTarget = 100,
             scoreActual = 100
         )
-        coEvery { generateDailyBriefUseCase("2026-08-01") } returns mockBrief
+        coEvery { orchestrator.generateMorningBrief(todayLocalDate) } returns mockBrief
 
         viewModel = DailyBriefViewModel(
-            getDailyBriefUseCase = getDailyBriefUseCase,
-            generateDailyBriefUseCase = generateDailyBriefUseCase,
+            repository = repository,
+            orchestrator = orchestrator,
             clock = clock,
             savedStateHandle = SavedStateHandle()
         )
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify(exactly = 1) { generateDailyBriefUseCase("2026-08-01") }
+        coVerify(exactly = 1) { orchestrator.generateMorningBrief(todayLocalDate) }
     }
 
     @Test
@@ -87,52 +89,52 @@ class DailyBriefViewModelTest {
             scoreTarget = 100,
             scoreActual = 100
         )
-        coEvery { getDailyBriefUseCase("2026-08-01") } returns flowOf(existingBrief)
+        coEvery { repository.getBriefForDate("2026-08-01") } returns flowOf(existingBrief)
 
         viewModel = DailyBriefViewModel(
-            getDailyBriefUseCase = getDailyBriefUseCase,
-            generateDailyBriefUseCase = generateDailyBriefUseCase,
+            repository = repository,
+            orchestrator = orchestrator,
             clock = clock,
             savedStateHandle = SavedStateHandle()
         )
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify(exactly = 0) { generateDailyBriefUseCase(any()) }
-        assertEquals("2026-08-01", viewModel.uiState.value.todayDate)
-        assertNotNull(viewModel.uiState.value.dailyBrief)
+        coVerify(exactly = 0) { orchestrator.generateMorningBrief(any()) }
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(existingBrief, state.dailyBrief)
     }
 
     @Test
-    fun generateTodayBrief_invokesGenerator_and_updatesStateWithRecommendations() = runTest {
-        coEvery { getDailyBriefUseCase("2026-08-01") } returns flowOf(null)
+    fun generateTodayBrief_invokesOrchestrator_andUpdatesUiState() = runTest {
+        val todayLocalDate = LocalDate.of(2026, 8, 1)
+        coEvery { repository.getBriefForDate("2026-08-01") } returns flowOf(null)
 
         val cards = listOf(
             RecommendationCard(
-                id = "att_low_1",
-                title = "Low Attendance",
-                description = "Attend Math class",
+                id = "1",
+                title = "Attend Physics",
+                description = "Attendance is at 65%",
                 category = "ATTENDANCE",
                 priority = 1,
                 actionRoute = "weekly"
             )
         )
-        val jsonCards = Json.encodeToString(cards)
-
         val mockBrief = DailyBrief(
             date = "2026-08-01",
             jsonSnapshot = "{}",
             snapshotHash = "hash123",
-            briefJson = jsonCards,
+            briefJson = Json.encodeToString(cards),
+            guidanceSource = DailyBrief.GUIDANCE_SOURCE_LLM,
             scoreTarget = 100,
-            scoreActual = 100
+            scoreActual = 80
         )
-
-        coEvery { generateDailyBriefUseCase("2026-08-01") } returns mockBrief
+        coEvery { orchestrator.generateMorningBrief(todayLocalDate) } returns mockBrief
 
         viewModel = DailyBriefViewModel(
-            getDailyBriefUseCase = getDailyBriefUseCase,
-            generateDailyBriefUseCase = generateDailyBriefUseCase,
+            repository = repository,
+            orchestrator = orchestrator,
             clock = clock,
             savedStateHandle = SavedStateHandle()
         )
@@ -144,9 +146,9 @@ class DailyBriefViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isGenerating)
-        assertFalse(state.isEmpty)
-        assertNotNull(state.dailyBrief)
+        assertFalse(state.isLoading)
         assertEquals(1, state.recommendations.size)
-        assertEquals("Low Attendance", state.recommendations.first().title)
+        assertEquals("Attend Physics", state.recommendations.first().title)
+        assertEquals("weekly", state.recommendations.first().actionRoute)
     }
 }

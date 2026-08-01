@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-08-01 (Task 6.9 complete — Group 6 complete!)
+> **Last updated:** 2026-08-01 (Task 6a.6 complete - Group 6a fully finished!)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -733,6 +733,75 @@ StudentOS/
 - Implemented `canCall()` (`callsToday < dailyLimit`), `remainingCalls()` (`(dailyLimit - callsToday).coerceAtLeast(0)`), `callsToday()`, and `recordCall()` appending audit log entries with clock timestamp.
 - Created comprehensive unit test suite `RateLimiterTest` verifying default limits, custom limits, call recording, limit bounds, automatic next-day reset, and coroutine-safe concurrent calls.
 - Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 1m 51s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 47s`).
+
+### Task 6a.1 — Morning Generation Orchestration Pipeline (`:feature:intelligence`) ✅
+- Built `@Singleton` `IntelligenceOrchestrator` in `:feature:intelligence` (`com.studentos.feature.intelligence.orchestrator`).
+- Implemented `generateMorningBrief(today: LocalDate)` strictly following 5-step morning pipeline:
+  1. Build `IntelligenceSnapshot` using `SnapshotBuilder`.
+  2. Compute SHA-256 snapshot hash.
+  3. Check `RecommendationCache` (return cached brief immediately on hit).
+  4. If miss, check `RateLimiter.canCall()`. If available, call `LLMProviderFactory.getProvider().generateBrief(prompt)`. On success: cache response, record AI call, persist `DailyBrief` via `DailyBriefRepository`, and return AI guidance brief. On failure: record call failure and fall back to `DeterministicFallback`.
+  5. If rate limit exceeded: skip LLM, generate offline guidance via `DeterministicFallback`, persist `DailyBrief` via `DailyBriefRepository`, and return offline brief.
+- Preserved strict scoping: zero `AppEventBus` subscriptions, zero WorkManager changes, zero Compose/ViewModel code.
+- Created comprehensive unit test suite `IntelligenceOrchestratorTest` verifying cache hits/skips, cache misses, rate limit fallback, LLM failure fallback, audit call logging, pipeline execution order, and determinism.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 3m 51s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 31s`).
+
+### Task 6a.2 — Live Event Subscription & Intra-Day Refresh (`:feature:intelligence`) ✅
+- Extended `IntelligenceOrchestrator` with `startEventSubscription(scope, debounceMillis)` subscribing to `AppEventBus.events`.
+- Applied 30-second `debounce()` (`debounceMillis`) preventing duplicate refreshes during event bursts.
+- Implemented `processIntraDayRefresh(today: LocalDate)` intra-day refresh pipeline:
+  1. Build current snapshot with `SnapshotBuilder`.
+  2. Diff previous vs current snapshot with `SnapshotDiffer`.
+  3. If `delta.isEmpty == true`: stop immediately (no LLM, no PromptBuilder, no DB updates).
+  4. Compute snapshot hash and check `RecommendationCache`. On hit: update repository guidance from cache and update `previousSnapshot`.
+  5. On miss: check `RateLimiter.canCall()`. If available, build `PromptBuilder.buildDeltaPrompt(...)` and invoke `LLMProviderFactory.getProvider().generateBrief(...)`. On success: cache response, record call, update repository guidance via `DailyBriefRepository.updateGuidance(...)`, and replace `previousSnapshot`.
+  6. On rate limit exceed or LLM failure: fall back to `DeterministicFallback.generateGuidance(...)`, update repository, and replace `previousSnapshot`.
+- Maintained UI independence: zero Compose, zero ViewModels, zero direct Room DAO calls, single coroutine subscription scope.
+- Extended unit test suite `IntelligenceOrchestratorTest` covering debounced event handling, empty delta short-circuiting, cache hits, rate limit fallbacks, delta prompt generation, and snapshot state replacement.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 2s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 15s`).
+
+### Task 6a.3 — DailyBriefWorker Integration with IntelligenceOrchestrator (`:feature:intelligence`) ✅
+- Refactored `DailyBriefWorker` to delegate 100% of brief generation to `IntelligenceOrchestrator.generateMorningBrief(today)`.
+- Stripped all direct business logic, repository calls, and use case invocations from `DailyBriefWorker`.
+- Preserved existing WorkManager scheduling: `enqueueUniquePeriodicWork("daily_brief_worker", ExistingPeriodicWorkPolicy.KEEP, ...)` repeating every 24 hours.
+- Preserved existing 3-attempt retry policy: returning `Result.retry()` for attempt counts $<3$, and `Result.failure()` thereafter.
+- Refactored `DailyBriefWorkerTest` to verify orchestrator invocation, retry policy, and failure paths.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 54s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 26s`).
+
+### Task 6a.4 — DailyBriefScreen Live Dashboard Integration (`:feature:intelligence`) ✅
+- Transformed `DailyBriefScreen` into a live dashboard rendering the latest `DailyBrief` generated by `IntelligenceOrchestrator`.
+- Implemented all 10 required UI sections in exact order:
+  1. **Header**: Date, source badge ("AI" / "Offline"), and last updated timestamp string.
+  2. **Daily Score Card**: Bound to ViewModel state (`scoreTarget`, `scoreActual`, progress bar).
+  3. **AI / Offline Guidance Card**: Renders guidance summary with "AI Guidance" / "Offline Guidance" badge.
+  4. **Recommendation Cards**: Displays recommendation list with priority badges, categories, titles, descriptions, and action buttons navigating via `actionRoute`.
+  5. **Attendance Warning Section**: Renders warnings for low attendance subjects.
+  6. **Urgent Assignment Section**: Displays urgent assignments with deadlines.
+  7. **Free Slot Suggestions**: Displays recommended free slot activities.
+  8. **Empty State**: Displays "No Daily Brief available." with "Generate Today's Brief" button delegating to ViewModel.
+  9. **Loading State**: Displays `CircularProgressIndicator()` when loading/generating.
+  10. **Error State**: Displays error message with "Retry" button delegating to ViewModel.
+- Maintained strict Clean Architecture: zero business logic in composables, ViewModel owns all state, deep links navigate without hardcoded routing inside UI.
+- Updated `DailyBriefViewModel` to inject `IntelligenceOrchestrator` & `DailyBriefRepository`, and updated `DailyBriefViewModelTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 57s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 19s`).
+
+### Task 6a.5 — BriefHistoryScreen Implementation (`:feature:intelligence`) ✅
+- Implemented `BriefHistoryScreen` displaying all historical daily briefs sorted newest $\rightarrow$ oldest (`LazyColumn`).
+- Created `DailyBriefHistoryItem` card displaying date, guidance source ("AI Engine" / "Offline Engine"), daily score (`scoreActual` / `scoreTarget`), guidance summary (`llmGuidance`), and generation timestamp (`HH:mm`).
+- Configured card click callback to navigate to `intelligence/daily-brief?date={date}`.
+- Handled loading state, empty state ("No history yet."), and error state with retry support (`DailyBriefHistoryViewModel.loadHistory()`).
+- Updated `DailyBriefDao`, `DailyBriefSummary`, `DailyBriefSummaryDomain`, and `DailyBriefRepositoryImpl` to include brief summary projections.
+- Updated `DailyBriefHistoryViewModelTest` to cover sorting, empty state, and error handling.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 4m 40s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 19s`).
+
+### Task 6a.6 — DailyScoreViewModel & Real-Time Daily Score Updates (`:feature:intelligence`) ✅
+- Implemented `@HiltViewModel` `DailyScoreViewModel` in `:feature:intelligence` (`com.studentos.feature.intelligence.presentation.viewmodel`).
+- Created `DailyScoreUiState` representing `targetScore`, `currentScore`, `progressPercentage`, `progressBarValue`, `remainingScore`, `isLoading`, and `errorMessage`.
+- Subscribed to `AppEventBus.events` with `debounce(30.seconds)` (default 30_000ms), reacting to all 11 system events (`AttendanceMarked`, `AttendanceUpdated`, `AssignmentStatusChanged`, `AssignmentCreated`, `AssignmentDeleted`, `ProjectTaskCompleted`, `ProjectUpdated`, `CpSyncCompleted`, `ContestReflectionAdded`, `DsaTopicUpdated`, `DailyScoreChanged`).
+- On debounced event trigger: reloads today's `DailyBrief` via `DailyBriefRepository.getBriefForDate(today)` and updates ONLY score UI state without re-triggering brief generation.
+- Prevents redundant UI updates if score parameters remain unchanged.
+- Created unit test suite `DailyScoreViewModelTest` verifying initial load, event score updates, 30s debouncing, event collapsing, and StateFlow emissions.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 3m 36s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 1s`). **Completed Group 6a!**
 
 ---
 

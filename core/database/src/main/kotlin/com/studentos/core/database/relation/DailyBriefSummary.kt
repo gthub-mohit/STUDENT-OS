@@ -22,5 +22,8 @@ data class DailyBriefSummary(
     val guidanceSource: String,
 
     @ColumnInfo(name = "generated_at")
-    val generatedAt: Long
+    val generatedAt: Long,
+
+    @ColumnInfo(name = "llm_guidance")
+    val llmGuidance: String? = null
 )

@@ -29,7 +29,7 @@ interface DailyBriefDao {
     @Query("SELECT * FROM daily_briefs ORDER BY date DESC")
     fun getAllBriefs(): Flow<List<DailyBriefEntity>>
 
-    @Query("SELECT id, date, score_target, score_actual, guidance_source, generated_at FROM daily_briefs ORDER BY date DESC")
+    @Query("SELECT id, date, score_target, score_actual, guidance_source, generated_at, llm_guidance FROM daily_briefs ORDER BY date DESC")
     fun getBriefSummaries(): Flow<List<DailyBriefSummary>>
 
     @Query("SELECT * FROM daily_briefs WHERE snapshot_hash = :hash LIMIT 1")

@@ -79,7 +79,8 @@ class DailyBriefRepositoryImpl @Inject constructor(
         scoreTarget = scoreTarget,
         scoreActual = scoreActual,
         guidanceSource = guidanceSource,
-        generatedAt = generatedAt
+        generatedAt = generatedAt,
+        llmGuidance = llmGuidance
     )
 
     private fun DailyBrief.toEntity() = DailyBriefEntity(

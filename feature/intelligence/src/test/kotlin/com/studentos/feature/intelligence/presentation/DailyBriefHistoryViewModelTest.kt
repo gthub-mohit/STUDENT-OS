@@ -9,6 +9,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -42,8 +43,8 @@ class DailyBriefHistoryViewModelTest {
     @Test
     fun initialState_loadsSortedHistory_newestFirst() = runTest {
         val summaries = listOf(
-            DailyBriefSummaryDomain(1, "2026-07-28", 100, 80, DailyBrief.GUIDANCE_SOURCE_DETERMINISTIC, 1000L),
-            DailyBriefSummaryDomain(2, "2026-08-01", 100, 95, DailyBrief.GUIDANCE_SOURCE_LLM, 2000L)
+            DailyBriefSummaryDomain(1, "2026-07-28", 100, 80, DailyBrief.GUIDANCE_SOURCE_DETERMINISTIC, 1000L, "Offline Guidance"),
+            DailyBriefSummaryDomain(2, "2026-08-01", 100, 95, DailyBrief.GUIDANCE_SOURCE_LLM, 2000L, "AI Guidance")
         )
 
         coEvery { getBriefHistoryUseCase() } returns flowOf(summaries)
@@ -73,6 +74,20 @@ class DailyBriefHistoryViewModelTest {
             assertFalse(state.isLoading)
             assertTrue(state.isEmpty)
             assertTrue(state.history.isEmpty())
+        }
+    }
+
+    @Test
+    fun errorLoadingHistory_setsErrorMessage() = runTest {
+        coEvery { getBriefHistoryUseCase() } returns flow { throw RuntimeException("Database error") }
+
+        viewModel = DailyBriefHistoryViewModel(getBriefHistoryUseCase)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isLoading)
+            assertEquals("Database error", state.errorMessage)
         }
     }
 }

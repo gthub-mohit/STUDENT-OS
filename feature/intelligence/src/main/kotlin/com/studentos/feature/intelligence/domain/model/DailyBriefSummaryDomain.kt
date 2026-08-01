@@ -6,5 +6,6 @@ data class DailyBriefSummaryDomain(
     val scoreTarget: Int,
     val scoreActual: Int,
     val guidanceSource: String,
-    val generatedAt: Long
+    val generatedAt: Long,
+    val llmGuidance: String? = null
 )
