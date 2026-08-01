@@ -24,6 +24,11 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.studentos.feature.assignments.navigation.assignmentsNavGraph
+import com.studentos.feature.attendance.navigation.attendanceNavGraph
+import com.studentos.feature.coding.navigation.CodingNavGraph
+import com.studentos.feature.coding.navigation.codingNavGraph
+import com.studentos.feature.intelligence.navigation.intelligenceNavGraph
 
 /**
  * Default feature module navigation graph implementations for Student OS.
@@ -32,7 +37,7 @@ import androidx.navigation.compose.composable
 private fun initDefaultModuleRegistry() {
     if (ModuleRegistry.graphs.isNotEmpty()) return
 
-    // 1. Intelligence / Daily Brief
+    // 1. Intelligence / Daily Brief (Real Feature Graph Integrated)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "intelligence"
         override val navItem = NavigationItem(
@@ -41,50 +46,24 @@ private fun initDefaultModuleRegistry() {
             icon = Icons.Default.Home
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
-            builder.composable("intelligence/daily-brief") {
-                PlaceholderScreen(
-                    title = "Daily Brief Screen",
-                    subtitle = "Route: intelligence/daily-brief",
-                    onAction = { navController.navigate("intelligence/history") },
-                    actionLabel = "Go to History"
-                )
-            }
-            builder.composable("intelligence/history") {
-                PlaceholderScreen(
-                    title = "Brief History Screen",
-                    subtitle = "Route: intelligence/history"
-                )
-            }
+            builder.intelligenceNavGraph(navController)
         }
     })
 
-    // 2. Attendance Module
+    // 2. Attendance Module (Real Feature Graph Integrated)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "attendance"
         override val navItem = NavigationItem(
-            route = "attendance/weekly",
+            route = "weekly",
             title = "Attendance",
             icon = Icons.Default.DateRange
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
-            builder.composable("attendance/weekly") {
-                PlaceholderScreen(
-                    title = "Attendance Weekly Screen",
-                    subtitle = "Route: attendance/weekly",
-                    onAction = { navController.navigate("attendance/calendar") },
-                    actionLabel = "Go to Calendar"
-                )
-            }
-            builder.composable("attendance/calendar") {
-                PlaceholderScreen(
-                    title = "Attendance Calendar Screen",
-                    subtitle = "Route: attendance/calendar"
-                )
-            }
+            builder.attendanceNavGraph(navController)
         }
     })
 
-    // 3. Assignments Module
+    // 3. Assignments Module (Real Feature Graph Integrated)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "assignments"
         override val navItem = NavigationItem(
@@ -93,51 +72,24 @@ private fun initDefaultModuleRegistry() {
             icon = Icons.Default.Edit
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
-            builder.composable("assignments/list") {
-                PlaceholderScreen(
-                    title = "Assignments List Screen",
-                    subtitle = "Route: assignments/list",
-                    onAction = { navController.navigate("assignments/detail/1") },
-                    actionLabel = "View Assignment #1"
-                )
-            }
-            builder.composable("assignments/detail/{id}") { backStackEntry ->
-                val id = backStackEntry.arguments?.getString("id") ?: "0"
-                PlaceholderScreen(
-                    title = "Assignment Detail #$id",
-                    subtitle = "Route: assignments/detail/$id"
-                )
-            }
+            builder.assignmentsNavGraph(navController)
         }
     })
 
-    // 4. Coding Module
+    // 4. Coding Module (Real Feature Graph Integrated)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "coding"
         override val navItem = NavigationItem(
-            route = "coding/dashboard",
+            route = CodingNavGraph.ROUTE_CP_DASHBOARD,
             title = "Coding",
             icon = Icons.Default.Build
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
-            builder.composable("coding/dashboard") {
-                PlaceholderScreen(
-                    title = "Coding Dashboard Screen",
-                    subtitle = "Route: coding/dashboard",
-                    onAction = { navController.navigate("coding/knowledge-tree") },
-                    actionLabel = "View Knowledge Tree"
-                )
-            }
-            builder.composable("coding/knowledge-tree") {
-                PlaceholderScreen(
-                    title = "DSA Knowledge Tree",
-                    subtitle = "Route: coding/knowledge-tree"
-                )
-            }
+            builder.codingNavGraph(navController)
         }
     })
 
-    // 5. Projects Module
+    // 5. Projects Module (Placeholder - Group 7)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "projects"
         override val navItem = NavigationItem(
@@ -164,7 +116,7 @@ private fun initDefaultModuleRegistry() {
         }
     })
 
-    // 6. Settings Module (Not in bottom navigation)
+    // 6. Settings Module (Placeholder - Group 8)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "settings"
         override val navItem = null
@@ -204,14 +156,14 @@ fun AppNavHost(
 }
 
 /**
- * PlaceholderScreen — reusable temporary composable for task 0.4 verification.
+ * Temporary UI placeholder screen for unbuilt feature modules.
  */
 @Composable
 private fun PlaceholderScreen(
     title: String,
     subtitle: String,
     onAction: (() -> Unit)? = null,
-    actionLabel: String = ""
+    actionLabel: String = "Action"
 ) {
     Column(
         modifier = Modifier

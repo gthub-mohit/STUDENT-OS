@@ -1,19 +1,8 @@
-/*
- * feature/intelligence/build.gradle.kts — :feature:intelligence
- *
- * Stub created in task 0.1 so settings.gradle.kts resolves cleanly.
- * Full implementation begins in task 6a.1 (IntelligenceOrchestrator).
- *
- * Allowed dependencies (folder-structure.md):
- *   :core:database, :core:events, :core:intelligence, :core:ui, :core:notifications
- * Forbidden: any other :feature:* module.
- * Note: :feature:intelligence is one of only two feature modules permitted
- *       to depend on :core:intelligence (the other is :feature:settings).
- */
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
@@ -34,13 +23,34 @@ android {
 }
 
 dependencies {
-    // Hilt — required by the hilt plugin applied above.
+    implementation(project(":core:database"))
+    implementation(project(":core:events"))
+    implementation(project(":core:intelligence"))
+
+    // Hilt & WorkManager
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.compiler)
+
+    // Kotlinx Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // Compose BOM & Navigation
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.navigation.compose)
 
     // Lint — feature-to-feature dependency guard.
     lintChecks(project(":lint-checks"))
 
-    // Task 6a.x: :core:database, :core:events, :core:intelligence, :core:ui,
-    //             :core:notifications, WorkManager, Compose, and additional dependencies added here.
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

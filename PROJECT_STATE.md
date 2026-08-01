@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-08-01 (Task 4.5 complete)
+> **Last updated:** 2026-08-01 (Task 5.5 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -596,6 +596,65 @@ StudentOS/
 - Updated `CodingModule` binding `DsaRepository` -> `DsaRepositoryImpl`.
 - Registered route `coding/knowledge-tree` in `CodingNavGraph`.
 - Created unit test suites `DsaRepositoryTest`, `AddDsaCategoryUseCaseTest`, `DeleteDsaCategoryUseCaseTest`, `UpdateDsaTopicUseCaseTest`, and `KnowledgeTreeViewModelTest`.
+
+### Task N1 — Navigation Integration Patch (Completed Features) ✅
+- Enabled project dependencies `:feature:attendance`, `:feature:assignments`, and `:feature:coding` in `app/build.gradle.kts`.
+- Connected `attendanceNavGraph` to `ModuleRegistry` in `AppNavHost.kt` (registered route `"weekly"`).
+- Connected `assignmentsNavGraph` to `ModuleRegistry` in `AppNavHost.kt` (registered route `"assignments/list"`).
+- Connected `codingNavGraph` to `ModuleRegistry` in `AppNavHost.kt` (registered route `CodingNavGraph.ROUTE_CP_DASHBOARD`).
+- Kept temporary architectural `PlaceholderScreen` stubs for unbuilt modules: `intelligence` (Group 5/6), `projects` (Group 7), and `settings` (Group 8).
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 5.1 — Daily Brief Models & Repository (`:feature:intelligence`) ✅
+- Created domain models `DailyBrief`, `DailyBriefSummaryDomain`, and `RecommendationCard`.
+- Created domain repository contract `DailyBriefRepository` and implementation `DailyBriefRepositoryImpl` mapping Room `DailyBriefEntity` to domain objects.
+- Created UseCases `GetDailyBriefUseCase` and `SaveDailyBriefUseCase`.
+- Created `IntelligenceModule` Hilt module binding `DailyBriefRepository` -> `DailyBriefRepositoryImpl`.
+- Created unit test suite `DailyBriefRepositoryTest` verifying save, flow mapping, and guidance update operations.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 5.2 — Modular Pipeline & Daily Intelligence Generator (`:feature:intelligence`) ✅
+- Implemented modular, open-closed pipeline architecture with `IntelligenceAnalyzer` interface.
+- Created immutable fact containers: `AttendanceFact`, `AssignmentFact`, `CodingFact`, `ProjectFact`, and `IntelligenceFacts`.
+- Created analyzers returning pure facts without UI strings or business logic: `AttendanceAnalyzer`, `AssignmentAnalyzer`, `CodingAnalyzer`, and `ProjectAnalyzerStub`.
+- Created pure domain services with zero Android framework dependencies: `PriorityScoringEngine` (computes scores 0–100 and card priorities 1–5) and `RecommendationEngine` (generates ordered `RecommendationCard` items).
+- Created `DailyBriefGenerator` orchestrating parallel analyzer execution (`async`), generating SHA-256 `snapshotHash`, embedding `schemaVersion = "1"`, and injecting `java.time.Clock`.
+- Created `IntelligencePipelineModule` providing `java.time.Clock`.
+- Created unit test suite `DailyBriefGeneratorTest` verifying pipeline orchestration, priority sorting, target score calculation, and schema version inclusion.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 5.3 — Daily Brief UI & Presentation Layer (`:feature:intelligence`) ✅
+- Created `GenerateDailyBriefUseCase` invoking pipeline generation and saving entry.
+- Created `DailyBriefUiState` managing `isLoading`, `isGenerating`, `dailyBrief`, `recommendations`, `errorMessage`, `isEmpty`, and `todayDate`.
+- Created `DailyBriefViewModel` managing state flow, today's brief loading, and generation triggers.
+- Created Material3 UI components: `ScoreSummaryCard` (progress bar, score target vs actual, engine badge) and `RecommendationCardItem` (visually distinct priority badges, category tag, title, description, action button).
+- Created `DailyBriefScreen` composable with TopAppBar, loading placeholders, empty state ("No Daily Brief generated yet." with "Generate Today's Brief" button), error state with Retry, and recommendation list.
+- Created `DailyBriefRoute` using `collectAsStateWithLifecycle()`.
+- Created `IntelligenceNavGraph` registering route `intelligence/daily-brief`.
+- Updated `:app` `build.gradle.kts` and `AppNavHost.kt` connecting `intelligenceNavGraph`.
+- Created unit test suite `DailyBriefViewModelTest` verifying empty state loading, generation trigger, recommendation parsing, and state updates.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 5.4 — Daily Brief History & Automatic Generation Integration (`:feature:intelligence`) ✅
+- Extended `DailyBriefRepository` and `DailyBriefRepositoryImpl` with `getBriefById(id: Long)`.
+- Created `GetBriefHistoryUseCase` returning `Flow<List<DailyBriefSummaryDomain>>`.
+- Created `DailyBriefHistoryUiState` and `DailyBriefHistoryViewModel` sorting history entries newest $\rightarrow$ oldest.
+- Created `DailyBriefHistoryItem` composable (date, score target vs actual, guidance source badge, generated time, item click listener).
+- Created `DailyBriefHistoryScreen` and `DailyBriefHistoryRoute` composables with top bar back arrow, loading indicator, empty state, and error handling.
+- Updated `DailyBriefViewModel` to implement **Automatic Daily Generation**: auto-generates today's brief if missing on launch (at most once per calendar day) and supports loading specific brief dates via `SavedStateHandle`.
+- Updated `DailyBriefScreen` TopAppBar with History icon button.
+- Updated `IntelligenceNavGraph` registering `intelligence/history` and `intelligence/daily-brief?date={date}` routes with popBackStack navigation.
+- Created unit test suites `DailyBriefHistoryViewModelTest` and updated `DailyBriefViewModelTest` verifying automatic generation rules, history sorting, empty/error state handling.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 5.5 — Daily Brief Background Generation (WorkManager) (`:feature:intelligence`) ✅
+- Created `@HiltWorker` implementation `DailyBriefWorker` extending `CoroutineWorker`.
+- Injected `GenerateDailyBriefUseCase`, `DailyBriefRepository`, and `Clock`.
+- Implemented background generation checks ensuring generation occurs at most once per calendar day on `Dispatchers.IO`.
+- Configured WorkManager scheduling helper `enqueue(context: Context)` with `enqueueUniquePeriodicWork` using `ExistingPeriodicWorkPolicy.KEEP` and 24-hour repeat interval.
+- Handled error retry policy (`Result.retry()` up to 3 retries, then `Result.failure()`).
+- Created unit test suite `DailyBriefWorkerTest` verifying skip on existing brief, generation on missing brief, and retry policy on failure.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
 
 ---
 
