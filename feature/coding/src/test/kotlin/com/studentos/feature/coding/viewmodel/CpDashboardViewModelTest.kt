@@ -3,12 +3,14 @@ package com.studentos.feature.coding.viewmodel
 import app.cash.turbine.test
 import com.studentos.feature.coding.domain.model.CpContest
 import com.studentos.feature.coding.domain.model.CpProfile
+import com.studentos.feature.coding.domain.model.CpReflection
 import com.studentos.feature.coding.domain.repository.CpRepository
 import com.studentos.feature.coding.presentation.viewmodel.CpDashboardViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -31,6 +33,8 @@ class CpDashboardViewModelTest {
         override fun getProfiles(): Flow<List<CpProfile>> = profilesFlow
         override fun getContests(profileId: Long): Flow<List<CpContest>> = contestsFlow
         override fun getAllContests(): Flow<List<CpContest>> = contestsFlow
+        override fun getReflection(contestId: Long): Flow<CpReflection?> = flowOf(null)
+        override suspend fun saveReflection(reflection: CpReflection) {}
     }
 
     private val testDispatcher = StandardTestDispatcher()

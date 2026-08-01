@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-07-31 (Task 4.3 complete)
+> **Last updated:** 2026-08-01 (Task 4.5 complete)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -577,6 +577,25 @@ StudentOS/
 - Created `CodingNavGraph` declaring route `"coding/cp"`.
 - Created Hilt module `CodingModule` binding `CpRepository` to `CpRepositoryImpl`.
 - Created unit test suite `CpDashboardViewModelTest` covering loading, empty state, profile mapping, contest mapping, lastSynced timestamp, and Room Flow updates.
+
+### Task 4.4 — Contest Reflection System (`:feature:coding`) ✅
+- Created domain model `CpReflection`.
+- Extended `CpRepository` and `CpRepositoryImpl` with `getReflection(contestId)` and `saveReflection(reflection)`.
+- Created `SaveContestReflectionUseCase` persisting reflections to Room and emitting `AppEvent.ContestReflectionAdded(contestId)` to `AppEventBus`.
+- Created `ContestReflectionUiState` and `ContestReflectionViewModel` handling form pre-filling, input validation (self-rating 1–5), save operations, and unsaved changes detection.
+- Created `ContestReflectionScreen` form composable with TopAppBar, `wentWrong` and `toRevise` multiline fields, 5-star rating selector, save action, and back press `ConfirmDialog` ("Discard changes?").
+- Registered route `coding/reflection/{contestId}` in `CodingNavGraph`.
+- Created unit test suites `SaveContestReflectionUseCaseTest` and `ContestReflectionViewModelTest` covering save, update, validation, event emission, pre-filling, and unsaved changes confirmation.
+
+### Task 4.5 — DSA Knowledge Tree (`:feature:coding`) ✅
+- Created domain models `DsaCategory` and `DsaTopic`.
+- Created domain repository contract `DsaRepository` and implementation `DsaRepositoryImpl` interfacing with `DsaCategoryDao` and `DsaTopicDao`.
+- Created UseCases: `AddDsaCategoryUseCase`, `DeleteDsaCategoryUseCase`, and `UpdateDsaTopicUseCase` (emits `AppEvent.DsaTopicUpdated` to `AppEventBus`).
+- Created `DsaKnowledgeUiState` and `KnowledgeTreeViewModel` handling loading state, empty state, category tree expansion, add/delete category dialogs, topic confidence updates (1–5), and solved status toggles.
+- Created `KnowledgeTreeScreen` composable displaying overall tree progress percentage, expandable category cards, category completion percentages, topic rows with star ratings and revised chips, and dialogs.
+- Updated `CodingModule` binding `DsaRepository` -> `DsaRepositoryImpl`.
+- Registered route `coding/knowledge-tree` in `CodingNavGraph`.
+- Created unit test suites `DsaRepositoryTest`, `AddDsaCategoryUseCaseTest`, `DeleteDsaCategoryUseCaseTest`, `UpdateDsaTopicUseCaseTest`, and `KnowledgeTreeViewModelTest`.
 
 ---
 
