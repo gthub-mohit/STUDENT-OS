@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-08-01 (Task 5.5 complete)
+> **Last updated:** 2026-08-01 (Task 6.9 complete — Group 6 complete!)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -655,6 +655,84 @@ StudentOS/
 - Handled error retry policy (`Result.retry()` up to 3 retries, then `Result.failure()`).
 - Created unit test suite `DailyBriefWorkerTest` verifying skip on existing brief, generation on missing brief, and retry policy on failure.
 - Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 6.1 — AppEventBus Foundation (`:core:events`) ✅
+- Created sealed class hierarchy `AppEvent`: `AttendanceMarked`, `AttendanceUpdated`, `AssignmentStatusChanged`, `AssignmentCreated`, `AssignmentDeleted`, `ProjectTaskCompleted`, `ProjectUpdated`, `CpSyncCompleted`, `ContestReflectionAdded`, `DsaTopicUpdated`, `DailyScoreChanged`.
+- Created thread-safe, non-blocking asynchronous `AppEventBus` interface and `AppEventBusImpl` backed by `MutableSharedFlow(replay = 0, extraBufferCapacity = 64, onBufferOverflow = DROP_OLDEST)`.
+- Created Hilt module `EventsModule` binding `AppEventBusImpl` as `@Singleton` `AppEventBus`.
+- Created unit test suite `AppEventBusTest` verifying thread-safety, event dispatching, multiple collectors support, in-order delivery, and zero replay behavior on new subscriptions.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 6.2 — LLMProvider Interface & MockProvider (`:core:intelligence`) ✅
+- Created pure domain interface `LLMProvider` with `generateBrief`, `updateGuidance`, and `isAvailable`.
+- Created domain model `LLMResult` (`Success` / `Failure`) and `FailureReason` enum (`OFFLINE`, `API_ERROR`, `RATE_LIMITED`, `INVALID_KEY`, `TIMEOUT`).
+- Implemented `MockProvider` returning fast, deterministic responses without randomness or network dependencies.
+- Implemented `LLMProviderFactory` reading `ai_provider` from `SettingsDao` and returning provider implementation.
+- Configured Hilt module `IntelligenceCoreModule` binding `MockProvider` as `@Singleton` `LLMProvider`.
+- Created unit test suites `MockProviderTest` and `LLMProviderFactoryTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 6.3 — DeepSeekProvider via Retrofit (`:core:intelligence`) ✅
+- Created DTO request/response models `DeepSeekRequest`, `DeepSeekMessage`, `DeepSeekResponse`, `DeepSeekChoice`, `DeepSeekUsage`.
+- Created Retrofit API interface `DeepSeekApiService` targeting POST `chat/completions`.
+- Created `DeepSeekKeyProvider` for secure API key retrieval from `SettingsDao`.
+- Created `DeepSeekProvider` implementing `LLMProvider` with 30s timeout, response parsing, and comprehensive error mapping (`OFFLINE`, `API_ERROR`, `INVALID_KEY`, `TIMEOUT`, `RATE_LIMITED`).
+- Updated `LLMProviderFactory` to support dynamic switching between `MockProvider` and `DeepSeekProvider`.
+- Created Hilt module `IntelligenceNetworkModule` for OkHttp and Retrofit dependency injection.
+- Created unit test suite `DeepSeekProviderTest` using `MockWebServer` and updated `LLMProviderFactoryTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon`) and debug build (`.\gradlew.bat assembleDebug --no-daemon`).
+
+### Task 6.4 — SnapshotBuilder (`:core:intelligence`) ✅
+- Created immutable `IntelligenceSnapshot` and nested DTO models (`StudentContextSnapshot`, `ClassTodaySnapshot`, `AttendanceWarningSnapshot`, `AssignmentUrgentSnapshot`, `FreeSlotSnapshot`, `SuggestedDsaTopicSnapshot`, `SuggestedProjectActionSnapshot`, `ScoreSnapshot`, `CpSummarySnapshot`).
+- Created `@Singleton` `SnapshotBuilder` in `:core:intelligence` gathering real-time facts from Room DAOs concurrently (`coroutineScope`, `async`).
+- Evaluated `score_target` dynamically based on active timetable slots, urgent assignments, project next actions, and DSA suggestions.
+- Preserved purity: no UI text, no recommendation strings, no prompt formatting, no markdown, no JSON logic.
+- Created unit test suite `SnapshotBuilderTest` verifying concurrent snapshot generation under 200ms, empty repository handling, score target calculation, and attendance warning calculations.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 11s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 3s`).
+
+### Task 6.5 — SnapshotDiffer (`:core:intelligence`) ✅
+- Created immutable `SnapshotDelta` data models (`ClassesDelta`, `AttendanceDelta`, `AssignmentsDelta`, `FreeSlotsDelta`, `DsaTopicDelta`, `ProjectActionDelta`, `ScoreDelta`, `CpSummaryDelta`).
+- Implemented pure, stateless, thread-safe domain component `SnapshotDiffer` in `:core:intelligence` evaluating differences between old and new `IntelligenceSnapshot` instances.
+- Computed `SnapshotDelta.isEmpty` property evaluating to `true` when no student-state changes occur.
+- Implemented delta filtering rules ignoring insignificant timestamp changes (e.g. `lastSynced` CP timestamp changes when ratings are identical).
+- Created comprehensive unit test suite `SnapshotDifferTest` covering empty delta detection, null old snapshot, timestamp ignoring, attendance/assignment additions/removals/updates, free slots, DSA topic, project action, score changes, and deterministic output.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 16s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 46s`).
+
+### Task 6.6 — PromptBuilder (`:core:intelligence`) ✅
+- Created pure domain service `PromptBuilder` in `:core:intelligence` annotated with Hilt `@Singleton`.
+- Implemented `buildMorningPrompt(snapshot)` generating structured compact morning prompts ($\le 400$ tokens / ~1600 chars).
+- Implemented `buildDeltaPrompt(previous, current, delta)` generating incremental prompts ($\le 150$ tokens / ~600 chars) including only modified sections and returning `"DELTA: NO_CHANGES"` when `delta.isEmpty` is true.
+- Applied token optimization strategies: machine-oriented compact formatting, omission of empty sections, and abbreviation of redundant labels.
+- Created unit test suite `PromptBuilderTest` verifying full snapshot formatting, empty section omission, delta section isolation, token budget bounds, and output determinism.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 20s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 47s`).
+
+### Task 6.7 — DeterministicFallback (`:core:intelligence`) ✅
+- Created structured domain models `GuidanceResult`, `GuidanceItem`, and `GuidanceSource` in `:core:intelligence` (`com.studentos.core.intelligence.fallback`).
+- Created pure offline rule engine `DeterministicFallback` annotated with `@Singleton` in `:core:intelligence`.
+- Implemented strict priority order rules: (1) Critical attendance $\rightarrow$ (2) Overdue assignments $\rightarrow$ (3) Urgent assignments $\rightarrow$ (4) Upcoming classes $\rightarrow$ (5) CP contest $\rightarrow$ (6) Weak DSA topic $\rightarrow$ (7) Project next action $\rightarrow$ (8) Free slot utilization.
+- Maintained strict purity: zero LLM calls, zero Retrofit, zero PromptBuilder, zero Room, zero Android SDK dependencies.
+- Created comprehensive unit test suite `DeterministicFallbackTest` verifying priority hierarchy, overdue vs urgent ordering, contest/DSA/project recommendations, empty snapshot handling, and deterministic output.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 1m 42s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 44s`).
+
+### Task 6.8 — RecommendationCache (`:core:intelligence`) ✅
+- Reused existing `RecommendationCacheEntity` and `RecommendationCacheDao` in `:core:database`.
+- Extended `RecommendationCacheDao` with `deleteExpired(thresholdEpochMs)` and `getCount()` queries.
+- Created `CachedRecommendation` domain model and `@Singleton` service `RecommendationCache` in `:core:intelligence`.
+- Implemented 24-hour TTL expiration logic utilizing injected `Clock`.
+- Implemented 7-entry retention limit (`deleteOldestBeyondLimit(7)`).
+- Implemented duplicate hash overwrite handling refreshing timestamp and replacing existing entry.
+- Added `putGuidance` helper serializing `GuidanceResult` domain objects via Kotlinx Serialization `Json`.
+- Created comprehensive unit test suite `RecommendationCacheTest` verifying cache hits, cache misses, 24h TTL expiration, duplicate overwriting, 7-entry retention limit, `clearExpired()`, and `Clock` dependency injection.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 2m 52s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 52s`).
+
+### Task 6.9 — RateLimiter (`:core:intelligence`) ✅
+- Reused existing `AiCallLogEntity` and `AiCallLogDao` in `:core:database`.
+- Created `@Singleton` service `RateLimiter` in `:core:intelligence` (`com.studentos.core.intelligence.limiter`).
+- Integrated dynamic daily limit lookup via `SettingsDao` key `"ai_daily_limit"` (defaulting to 10 if unconfigured).
+- Implemented dynamic start-of-day epoch calculation using injected `Clock` and `LocalDate.now(clock)`.
+- Implemented `canCall()` (`callsToday < dailyLimit`), `remainingCalls()` (`(dailyLimit - callsToday).coerceAtLeast(0)`), `callsToday()`, and `recordCall()` appending audit log entries with clock timestamp.
+- Created comprehensive unit test suite `RateLimiterTest` verifying default limits, custom limits, call recording, limit bounds, automatic next-day reset, and coroutine-safe concurrent calls.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 1m 51s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 47s`).
 
 ---
 

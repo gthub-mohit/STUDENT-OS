@@ -27,10 +27,24 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:database"))
+    implementation(project(":core:events"))
+
     // Hilt — required by the hilt plugin applied above.
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 
-    // Task 6.x: :core:database, :core:events, Retrofit, OkHttp,
-    //            kotlinx-serialization, and additional dependencies added here.
+    // Networking & Serialization
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.converter)
+    implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Unit test libraries
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation(libs.turbine)
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }

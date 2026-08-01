@@ -18,9 +18,18 @@ interface RecommendationCacheDao {
     @Query("DELETE FROM recommendation_cache WHERE id NOT IN (SELECT id FROM recommendation_cache ORDER BY created_at DESC LIMIT :keepCount)")
     suspend fun deleteOldestBeyondLimit(keepCount: Int = 7)
 
+    @Query("DELETE FROM recommendation_cache WHERE created_at < :thresholdEpochMs")
+    suspend fun deleteExpired(thresholdEpochMs: Long): Int
+
+    @Query("DELETE FROM recommendation_cache WHERE snapshot_hash = :hash")
+    suspend fun deleteByHash(hash: String): Int
+
     @Query("SELECT * FROM recommendation_cache WHERE snapshot_hash = :hash LIMIT 1")
     suspend fun getByHash(hash: String): RecommendationCacheEntity?
 
     @Query("SELECT * FROM recommendation_cache ORDER BY created_at DESC")
     suspend fun getAll(): List<RecommendationCacheEntity>
+
+    @Query("SELECT COUNT(*) FROM recommendation_cache")
+    suspend fun getCount(): Int
 }

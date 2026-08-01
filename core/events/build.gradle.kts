@@ -30,5 +30,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 
-    // Task 6.1: Kotlin coroutines and additional dependencies added here.
+    // Unit test libraries
+    testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation(libs.turbine)
 }
