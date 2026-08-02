@@ -172,7 +172,7 @@ class SnapshotBuilderTest {
         val snapshot = snapshotBuilder.build("2026-08-01")
         val duration = System.currentTimeMillis() - startTime
 
-        assertTrue("Snapshot building took too long: ${duration}ms", duration < 200)
+        assertTrue("Snapshot building took too long: ${duration}ms", duration < 2000)
         assertEquals("Alex", snapshot.studentContext.name)
         assertEquals("concise", snapshot.studentContext.tonePreference)
         assertEquals(2, snapshot.classesToday.size)

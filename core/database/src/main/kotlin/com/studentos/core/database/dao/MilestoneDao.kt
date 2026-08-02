@@ -26,6 +26,9 @@ interface MilestoneDao {
     @Query("DELETE FROM milestones WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("SELECT * FROM milestones WHERE id = :id")
+    suspend fun getMilestoneById(id: Long): MilestoneEntity?
+
     @Query("SELECT * FROM milestones WHERE project_id = :projectId ORDER BY target_date ASC, id ASC")
     fun getMilestonesForProject(projectId: Long): Flow<List<MilestoneEntity>>
 }

@@ -23,7 +23,10 @@ interface ProjectTaskDao {
     @Query("UPDATE project_tasks SET is_next_action = :isNextAction WHERE id = :id")
     suspend fun updateNextAction(id: Long, isNextAction: Boolean)
 
-    @Query("UPDATE project_tasks SET completed_at = :completedAt WHERE id = :id")
+    @Query("UPDATE project_tasks SET is_next_action = 0 WHERE project_id = :projectId")
+    suspend fun clearNextActionForProject(projectId: Long)
+
+    @Query("UPDATE project_tasks SET completed_at = :completedAt, is_next_action = 0 WHERE id = :id")
     suspend fun updateCompletedAt(id: Long, completedAt: Long?)
 
     @Query("UPDATE project_tasks SET is_parallel = :isParallel WHERE project_id = :projectId")
@@ -35,11 +38,20 @@ interface ProjectTaskDao {
     @Query("DELETE FROM project_tasks WHERE project_id = :projectId AND completed_at IS NOT NULL")
     suspend fun deleteCompletedTasksForProject(projectId: Long)
 
+    @Query("SELECT * FROM project_tasks WHERE id = :id")
+    suspend fun getTaskById(id: Long): ProjectTaskEntity?
+
     @Query("SELECT * FROM project_tasks WHERE project_id = :projectId ORDER BY sort_order ASC, id ASC")
     fun getTasksForProject(projectId: Long): Flow<List<ProjectTaskEntity>>
 
     @Query("SELECT * FROM project_tasks WHERE project_id = :projectId AND is_next_action = 1 AND completed_at IS NULL LIMIT 1")
     fun getNextAction(projectId: Long): Flow<ProjectTaskEntity?>
+
+    @Query("SELECT * FROM project_tasks WHERE project_id = :projectId AND completed_at IS NULL ORDER BY sort_order ASC, id ASC LIMIT 1")
+    suspend fun getFirstUnfinishedTask(projectId: Long): ProjectTaskEntity?
+
+    @Query("SELECT MAX(sort_order) FROM project_tasks WHERE project_id = :projectId")
+    suspend fun getMaxSortOrder(projectId: Long): Int?
 
     @Query("SELECT COUNT(*) FROM project_tasks WHERE project_id = :projectId AND completed_at IS NULL")
     suspend fun getPendingTaskCount(projectId: Long): Int

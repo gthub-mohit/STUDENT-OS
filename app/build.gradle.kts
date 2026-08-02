@@ -129,6 +129,6 @@ dependencies {
     implementation(project(":feature:assignments"))
     implementation(project(":feature:coding"))
     implementation(project(":feature:intelligence"))
-    // implementation(project(":feature:projects"))
+    implementation(project(":feature:projects"))
     implementation(project(":feature:settings"))
 }

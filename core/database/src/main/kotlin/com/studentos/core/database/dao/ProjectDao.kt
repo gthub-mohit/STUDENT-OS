@@ -25,7 +25,7 @@ interface ProjectDao {
     suspend fun updateLastActivityAt(id: Long, lastActivityAt: Long)
 
     @Query("UPDATE projects SET archived_at = :archivedAt WHERE id = :id")
-    suspend fun archive(id: Long, archivedAt: Long)
+    suspend fun archive(id: Long, archivedAt: Long?)
 
     @Query("SELECT * FROM projects WHERE archived_at IS NULL ORDER BY last_activity_at DESC")
     fun getActiveProjects(): Flow<List<ProjectEntity>>

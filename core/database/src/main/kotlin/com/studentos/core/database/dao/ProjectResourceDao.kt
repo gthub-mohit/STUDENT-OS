@@ -23,6 +23,9 @@ interface ProjectResourceDao {
     @Query("DELETE FROM project_resources WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("SELECT * FROM project_resources WHERE id = :id")
+    suspend fun getResourceById(id: Long): ProjectResourceEntity?
+
     @Query("SELECT * FROM project_resources WHERE project_id = :projectId ORDER BY id ASC")
     fun getResourcesForProject(projectId: Long): Flow<List<ProjectResourceEntity>>
 }

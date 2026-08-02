@@ -1,10 +1,5 @@
 /*
  * feature/projects/build.gradle.kts — :feature:projects
- *
- * Stub created in task 0.1. Full implementation in tasks 5.1–5.6.
- *
- * Allowed dependencies: :core:database, :core:events, :core:ui, :core:notifications
- * Forbidden: any other :feature:* module.
  */
 plugins {
     alias(libs.plugins.android.library)
@@ -30,13 +25,27 @@ android {
 }
 
 dependencies {
-    // Hilt — required by the hilt plugin applied above.
+    // Core module dependencies
+    implementation(project(":core:database"))
+    implementation(project(":core:events"))
+
+    // Compose BOM & UI
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    implementation(libs.bundles.composeUi)
+
+    // Navigation & Hilt
+    implementation(libs.navigation.compose)
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 
     // Lint — feature-to-feature dependency guard.
     lintChecks(project(":lint-checks"))
 
-    // Task 5.x: :core:database, :core:events, :core:ui, :core:notifications,
-    //            WorkManager, Compose, and additional dependencies added here.
+    // Testing dependencies
+    testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 }

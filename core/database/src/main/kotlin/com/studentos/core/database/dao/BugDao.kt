@@ -26,6 +26,9 @@ interface BugDao {
     @Query("DELETE FROM bugs WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("SELECT * FROM bugs WHERE id = :id")
+    suspend fun getBugById(id: Long): BugEntity?
+
     @Query("SELECT * FROM bugs WHERE project_id = :projectId ORDER BY id ASC")
     fun getBugsForProject(projectId: Long): Flow<List<BugEntity>>
 

@@ -99,18 +99,30 @@ private fun initDefaultModuleRegistry() {
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
             builder.composable("projects/list") {
-                PlaceholderScreen(
-                    title = "Projects List Screen",
-                    subtitle = "Route: projects/list",
-                    onAction = { navController.navigate("projects/detail/101") },
-                    actionLabel = "View Project #101"
+                com.studentos.feature.projects.presentation.screen.ProjectsRoute(
+                    onProjectClick = { projectId ->
+                        navController.navigate("projects/detail/$projectId")
+                    }
                 )
             }
-            builder.composable("projects/detail/{projectId}") { backStackEntry ->
-                val projectId = backStackEntry.arguments?.getString("projectId") ?: "0"
-                PlaceholderScreen(
-                    title = "Project Detail #$projectId",
-                    subtitle = "Route: projects/detail/$projectId"
+            builder.composable("projects/detail/{projectId}") {
+                com.studentos.feature.projects.presentation.screen.ProjectTaskRoute(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            builder.composable("projects/milestones/{projectId}") {
+                com.studentos.feature.projects.presentation.screen.MilestoneRoute(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            builder.composable("projects/bugs/{projectId}") {
+                com.studentos.feature.projects.presentation.screen.BugTrackerRoute(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            builder.composable("projects/resources/{projectId}") {
+                com.studentos.feature.projects.presentation.screen.ProjectResourcesRoute(
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }

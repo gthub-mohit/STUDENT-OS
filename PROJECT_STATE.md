@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — Student OS
 
-> **Last updated:** 2026-08-01 (Task 6a.6 complete - Group 6a fully finished!)
+> **Last updated:** 2026-08-02 (Group 5a complete - Task 5a.5)
 > **Purpose:** Snapshot for AI continuity. Read this file first when resuming work.
 
 ---
@@ -802,6 +802,54 @@ StudentOS/
 - Prevents redundant UI updates if score parameters remain unchanged.
 - Created unit test suite `DailyScoreViewModelTest` verifying initial load, event score updates, 30s debouncing, event collapsing, and StateFlow emissions.
 - Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 3m 36s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 1s`). **Completed Group 6a!**
+
+### Task 5a.1 — Project Creation & Dashboard (`:feature:projects`) ✅
+- Implemented `ProjectDomain` domain model, `ProjectRepository` interface, `ProjectRepositoryImpl`, and `ProjectRepositoryModule` Hilt DI binding.
+- Implemented `ProjectsViewModel` (@HiltViewModel) managing active and archived project lists, project creation, edit, archiving/unarchiving, and UI states.
+- Created `ProjectCard` composable component displaying title, status badge ("Active", "Inactive Alert", "Archived"), active next action task, progress % and progress bar, last updated timestamp, and action buttons.
+- Created `CreateProjectDialog` composable dialog for project title input and configurable inactivity threshold days (default 7 days).
+- Implemented `ProjectsScreen` and `ProjectsRoute` composable views supporting loading, active/archived tab filtering, empty state, error state with retry, and project selection callbacks.
+- Connected `:feature:projects` dependency in `app/build.gradle.kts` and registered `ProjectsRoute` in `AppNavHost.kt` navigation graph.
+- Added comprehensive unit test suites `ProjectsViewModelTest` and `ProjectRepositoryImplTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 1m 52s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 51s`).
+
+### Task 5a.2 — Sequential & Parallel Task Management (`:feature:projects`) ✅
+- Implemented `ProjectTaskDomain` domain model and task management methods in `ProjectRepository` / `ProjectRepositoryImpl`.
+- Implemented `@HiltViewModel` `ProjectTaskViewModel` managing tasks, sequential/parallel mode toggling, creation, editing, deletion, completion/reopening, and manual Next Action selection.
+- Enforced Room partial unique index invariant `idx_one_next_action` (`WHERE is_next_action = 1 AND is_parallel = 0`). In sequential mode, completing the current next action automatically promotes the next unfinished task. Setting a next action explicitly clears existing next action flags for the project first.
+- Emitted `AppEvent.ProjectTaskCompleted` and `AppEvent.ProjectUpdated` through `AppEventBus` on task updates.
+- Created `TaskItem`, `CreateTaskDialog`, `ProjectTaskScreen`, and `ProjectTaskRoute` composable components using Material 3. Registered `projects/detail/{projectId}` route in `AppNavHost.kt`.
+- Created comprehensive unit test suites `ProjectTaskViewModelTest` and updated `ProjectRepositoryImplTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 1m 44s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 32s`).
+
+### Task 5a.3 — Milestone & Sub-Goal Tracking (`:feature:projects`) ✅
+- Implemented `MilestoneDomain` domain model and milestone operations (`createMilestone`, `updateMilestone`, `deleteMilestone`, `completeMilestone`, `reopenMilestone`) in `ProjectRepository` / `ProjectRepositoryImpl`.
+- Reused existing `MilestoneEntity` and `MilestoneDao` from `:core:database`.
+- Implemented `@HiltViewModel` `MilestoneViewModel` managing milestone state, creation, editing, deletion, and completion toggles.
+- Dynamic milestone progress calculated dynamically as `(completedCount / totalCount) * 100%`.
+- Emitted `AppEvent.ProjectUpdated(projectId)` through `AppEventBus` on milestone changes to trigger live system updates.
+- Created `MilestoneCard`, `CreateMilestoneDialog`, `MilestoneScreen`, and `MilestoneRoute` composable components using Material 3. Registered `projects/milestones/{projectId}` route in `AppNavHost.kt`.
+- Created unit test suite `MilestoneViewModelTest` and updated `ProjectRepositoryImplTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 4m 19s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 21s`).
+
+### Task 5a.4 — Project Bug / Issue Tracker (`:feature:projects`) ✅
+- Implemented `BugDomain` domain model and bug operations (`createBug`, `updateBug`, `deleteBug`, `resolveBug`, `reopenBug`) in `ProjectRepository` / `ProjectRepositoryImpl`.
+- Reused existing `BugEntity` and `BugDao` from `:core:database`.
+- Implemented `@HiltViewModel` `BugTrackerViewModel` managing bug state, status filters (`OPEN`, `RESOLVED`, `ALL`), severity filters (`HIGH`, `MEDIUM`, `LOW`, `ALL`), and sort orders (`SEVERITY_DESC`, `SEVERITY_ASC`, `NEWEST`).
+- Emitted `AppEvent.ProjectUpdated(projectId)` through `AppEventBus` on bug mutations.
+- Created `BugCard`, `CreateBugDialog`, `BugTrackerScreen`, and `BugTrackerRoute` composable components using Material 3. Registered `projects/bugs/{projectId}` route in `AppNavHost.kt`.
+- Created unit test suite `BugTrackerViewModelTest` and updated `ProjectRepositoryImplTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 4m 12s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 13s`).
+
+### Task 5a.5 — Project Resource Vault & Notes (`:feature:projects`) ✅
+- Implemented `ProjectResourceDomain` domain model and resource operations (`createResource`, `updateResource`, `deleteResource`) in `ProjectRepository` / `ProjectRepositoryImpl`.
+- Reused existing `ProjectResourceEntity` and `ProjectResourceDao` from `:core:database`.
+- Implemented `@HiltViewModel` `ProjectResourcesViewModel` managing resource vault state, creation, editing, and deletion.
+- Supported resource types (`LINK`, `NOTE`, `DOCUMENTATION`, `FILE`).
+- Emitted `AppEvent.ProjectUpdated(projectId)` through `AppEventBus` on resource mutations.
+- Created `ResourceCard`, `CreateResourceDialog`, `ProjectResourcesScreen`, and `ProjectResourcesRoute` composable components using Material 3. Registered `projects/resources/{projectId}` route in `AppNavHost.kt`.
+- Created unit test suite `ProjectResourcesViewModelTest` and updated `ProjectRepositoryImplTest`.
+- Verified unit test suite (`.\gradlew.bat test --no-daemon` -> `BUILD SUCCESSFUL in 4m 57s`) and debug assembly (`.\gradlew.bat assembleDebug --no-daemon` -> `BUILD SUCCESSFUL in 1m 20s`). (Group 5a fully complete!)
 
 ---
 
