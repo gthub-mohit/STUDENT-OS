@@ -22,6 +22,8 @@ class OcrViewModelTest {
         var shouldFailImportWithoutReplace = false
         var importedSlots: List<ParsedTimetableSlot>? = null
 
+        override fun getAllSlots(): kotlinx.coroutines.flow.Flow<List<com.studentos.core.database.entity.TimetableSlotEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+
         override suspend fun importTimetable(
             slots: List<ParsedTimetableSlot>,
             replaceExisting: Boolean,

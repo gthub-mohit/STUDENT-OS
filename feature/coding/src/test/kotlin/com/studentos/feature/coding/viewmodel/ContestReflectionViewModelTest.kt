@@ -3,6 +3,7 @@ package com.studentos.feature.coding.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import com.studentos.core.events.AppEvent
 import com.studentos.core.events.AppEventBus
+import com.studentos.core.events.AppResult
 import com.studentos.feature.coding.domain.model.CpContest
 import com.studentos.feature.coding.domain.model.CpProfile
 import com.studentos.feature.coding.domain.model.CpReflection
@@ -53,6 +54,10 @@ class ContestReflectionViewModelTest {
         override suspend fun saveReflection(reflection: CpReflection) {
             reflectionMap[reflection.contestId] = reflection
         }
+
+        override suspend fun syncProfiles(): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun syncProfile(platform: String, handle: String): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun addOrUpdateProfile(platform: String, handle: String): AppResult<Long> = AppResult.Success(1L)
     }
 
     private val testDispatcher = StandardTestDispatcher()

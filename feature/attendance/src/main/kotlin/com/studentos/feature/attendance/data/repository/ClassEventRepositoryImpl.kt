@@ -43,8 +43,9 @@ class ClassEventRepositoryImpl @Inject constructor(
             val event = classEventDao.getEventByIdOnce(eventId)
                 ?: return AppResult.Failure(AppError.ValidationError("Class event not found"))
 
-            // Emit event AFTER database write completes successfully
+            // Emit events AFTER database write completes successfully
             appEventBus.emit(AppEvent.AttendanceMarked(subjectId = event.subjectId, status = status))
+            appEventBus.emit(AppEvent.AttendanceUpdated(subjectId = event.subjectId))
 
             AppResult.Success(Unit)
         } catch (e: Exception) {
@@ -72,13 +73,14 @@ class ClassEventRepositoryImpl @Inject constructor(
 
             val newId = classEventDao.insert(extraClassEntity)
 
-            // Emit event AFTER database write completes successfully
+            // Emit events AFTER database write completes successfully
             appEventBus.emit(
                 AppEvent.AttendanceMarked(
                     subjectId = subjectId,
                     status = ClassEventEntity.STATUS_EXTRA_CLASS
                 )
             )
+            appEventBus.emit(AppEvent.AttendanceUpdated(subjectId = subjectId))
 
             AppResult.Success(newId)
         } catch (e: Exception) {

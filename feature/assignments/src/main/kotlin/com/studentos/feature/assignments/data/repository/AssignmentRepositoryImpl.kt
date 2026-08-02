@@ -51,6 +51,10 @@ class AssignmentRepositoryImpl @Inject constructor(
         return assignmentDao.getAssignmentById(id)
     }
 
+    override fun getAllAssignments(): Flow<List<AssignmentEntity>> {
+        return assignmentDao.getAllAssignments()
+    }
+
     override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> {
         return assignmentDao.getAssignmentsByStatus(status)
     }
@@ -84,6 +88,7 @@ class AssignmentRepositoryImpl @Inject constructor(
             val newId = assignmentDao.insert(assignment)
             val created = assignment.copy(id = newId)
             reminderScheduler?.scheduleReminder(created)
+            eventBus.emit(AppEvent.AssignmentCreated(assignmentId = newId))
             AppResult.Success(newId)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to create assignment"))
@@ -147,6 +152,7 @@ class AssignmentRepositoryImpl @Inject constructor(
             }
 
             reminderScheduler?.cancelReminder(id)
+            eventBus.emit(AppEvent.AssignmentDeleted(assignmentId = id))
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to delete assignment"))

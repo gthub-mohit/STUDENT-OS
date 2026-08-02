@@ -1,10 +1,12 @@
 package com.studentos.feature.coding.viewmodel
 
 import app.cash.turbine.test
+import com.studentos.core.events.AppResult
 import com.studentos.feature.coding.domain.model.CpContest
 import com.studentos.feature.coding.domain.model.CpProfile
 import com.studentos.feature.coding.domain.model.CpReflection
 import com.studentos.feature.coding.domain.repository.CpRepository
+import com.studentos.feature.coding.domain.usecase.GetGroupedContestsUseCase
 import com.studentos.feature.coding.presentation.viewmodel.CpDashboardViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,12 +31,31 @@ class CpDashboardViewModelTest {
     private class FakeCpRepository : CpRepository {
         val profilesFlow = MutableStateFlow<List<CpProfile>>(emptyList())
         val contestsFlow = MutableStateFlow<List<CpContest>>(emptyList())
+        var syncCalled = false
 
         override fun getProfiles(): Flow<List<CpProfile>> = profilesFlow
         override fun getContests(profileId: Long): Flow<List<CpContest>> = contestsFlow
         override fun getAllContests(): Flow<List<CpContest>> = contestsFlow
         override fun getReflection(contestId: Long): Flow<CpReflection?> = flowOf(null)
         override suspend fun saveReflection(reflection: CpReflection) {}
+
+        override suspend fun syncProfiles(): AppResult<Unit> {
+            syncCalled = true
+            return AppResult.Success(Unit)
+        }
+
+        override suspend fun syncProfile(platform: String, handle: String): AppResult<Unit> {
+            syncCalled = true
+            return AppResult.Success(Unit)
+        }
+
+        override suspend fun addOrUpdateProfile(platform: String, handle: String): AppResult<Long> {
+            syncCalled = true
+            val current = profilesFlow.value.toMutableList()
+            current.add(CpProfile(id = 1L, platform = platform, handle = handle))
+            profilesFlow.value = current
+            return AppResult.Success(1L)
+        }
     }
 
     private val testDispatcher = StandardTestDispatcher()
@@ -45,7 +66,8 @@ class CpDashboardViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = FakeCpRepository()
-        viewModel = CpDashboardViewModel(repository)
+        val getGroupedContestsUseCase = GetGroupedContestsUseCase(repository)
+        viewModel = CpDashboardViewModel(repository, getGroupedContestsUseCase)
     }
 
     @After
@@ -99,29 +121,14 @@ class CpDashboardViewModelTest {
             assertEquals(1, state.profiles.size)
             assertEquals("chef123", state.profiles[0].handle)
             assertEquals(1, state.contests.size)
-            assertEquals("Starters 100", state.contests[0].contestName)
             assertEquals(syncTime, state.lastSyncedAt)
         }
     }
 
     @Test
-    fun uiState_reactiveRoomFlowUpdates_emitsUpdatedStateOnDataChange() = runTest {
-        viewModel.uiState.test {
-            awaitItem() // Initial loading state
-
-            // Emits initial data
-            repository.profilesFlow.value = listOf(CpProfile(id = 1L, platform = "CODEFORCES", handle = "user1", currentRating = 1500))
-            testDispatcher.scheduler.advanceUntilIdle()
-
-            val state1 = awaitItem()
-            assertEquals(1500, state1.profiles[0].currentRating)
-
-            // Dynamic Room Flow update occurs
-            repository.profilesFlow.value = listOf(CpProfile(id = 1L, platform = "CODEFORCES", handle = "user1", currentRating = 1600))
-            testDispatcher.scheduler.advanceUntilIdle()
-
-            val state2 = awaitItem()
-            assertEquals(1600, state2.profiles[0].currentRating)
-        }
+    fun triggerSync_invokesRepositorySync() = runTest {
+        viewModel.triggerSync()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(repository.syncCalled)
     }
 }

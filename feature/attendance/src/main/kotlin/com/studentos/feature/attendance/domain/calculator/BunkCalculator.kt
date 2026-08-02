@@ -4,7 +4,8 @@ import kotlin.math.ceil
 import kotlin.math.floor
 
 /**
- * BunkCalculator — Pure Kotlin domain calculator determining safe skippable classes and required attendance.
+ * BunkCalculator — Pure Kotlin domain calculator determining safe skippable classes, required attendance,
+ * and future attendance predictions.
  *
  * Formula definitions (design.md Line 297 & ui-blueprint.md Line 931):
  * P = present + extraPresent
@@ -58,5 +59,23 @@ object BunkCalculator {
 
         val mustAttendVal = ceil((t * h - 100.0 * p) / (100.0 - t))
         return mustAttendVal.toInt().coerceAtLeast(0)
+    }
+
+    fun predictAttendance(
+        present: Int,
+        absent: Int,
+        cancelled: Int,
+        holiday: Int,
+        extraPresent: Int,
+        futureAttended: Int,
+        futureBunked: Int
+    ): Double {
+        return AttendanceCalculator.calculatePercentage(
+            present = present + futureAttended.coerceAtLeast(0),
+            absent = absent + futureBunked.coerceAtLeast(0),
+            cancelled = cancelled,
+            holiday = holiday,
+            extraPresent = extraPresent
+        )
     }
 }

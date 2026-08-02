@@ -74,6 +74,13 @@ class KnowledgeTreeViewModel @Inject constructor(
         initialValue = DsaKnowledgeUiState(isLoading = true)
     )
 
+    val revisionQueue: StateFlow<List<DsaTopic>> = dsaRepository.getRevisionQueue()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     fun toggleCategoryExpansion(categoryId: Long) {
         expandedIdsFlow.update { current ->
             if (current.contains(categoryId)) {
@@ -123,20 +130,19 @@ class KnowledgeTreeViewModel @Inject constructor(
 
     fun onTopicConfidenceChanged(topic: DsaTopic, newConfidence: Int) {
         viewModelScope.launch {
-            val updated = topic.copy(confidenceLevel = newConfidence.coerceIn(1, 5))
-            updateDsaTopicUseCase(updated)
+            dsaRepository.updateTopicConfidence(topic.id, newConfidence)
         }
     }
 
     fun onToggleTopicSolved(topic: DsaTopic) {
         viewModelScope.launch {
-            val newStatus = if (topic.revisionStatus == DsaTopic.STATUS_REVISED) {
-                DsaTopic.STATUS_NOT_STARTED
-            } else {
-                DsaTopic.STATUS_REVISED
-            }
-            val updated = topic.copy(revisionStatus = newStatus)
-            updateDsaTopicUseCase(updated)
+            dsaRepository.completeRevision(topic.id)
+        }
+    }
+
+    fun completeRevision(topicId: Long) {
+        viewModelScope.launch {
+            dsaRepository.completeRevision(topicId)
         }
     }
 }

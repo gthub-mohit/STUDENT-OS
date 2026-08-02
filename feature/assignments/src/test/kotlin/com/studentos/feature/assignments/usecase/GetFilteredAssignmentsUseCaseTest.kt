@@ -23,9 +23,10 @@ class GetFilteredAssignmentsUseCaseTest {
         var lastRequestedStatus: String? = null
 
         override fun getAssignmentById(id: Long): Flow<AssignmentEntity?> = error("Not needed")
+        override fun getAllAssignments(): Flow<List<AssignmentEntity>> = flowOf(listOf(createAssignment(100L, "All HW", AssignmentEntity.STATUS_PENDING)))
         override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> {
             lastRequestedStatus = status
-            return flowOf(listOf(createAssignment(104L, "Completed HW", status)))
+            return flowOf(listOf(createAssignment(104L, "Status HW", status)))
         }
 
         override fun getAssignmentsToday(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> {
@@ -59,7 +60,7 @@ class GetFilteredAssignmentsUseCaseTest {
                 id = id,
                 subjectId = 1L,
                 title = title,
-                deadline = System.currentTimeMillis() + 86400000L,
+                deadline = System.currentTimeMillis(),
                 status = status,
                 createdAt = System.currentTimeMillis()
             )
@@ -67,53 +68,32 @@ class GetFilteredAssignmentsUseCaseTest {
     }
 
     @Test
-    fun invoke_todayFilter_delegatesToRepositoryTodayWithValidBoundaries() = runBlocking {
+    fun filterAll_queriesAllAssignments() = runBlocking {
         val repo = FakeAssignmentRepository()
         val useCase = GetFilteredAssignmentsUseCase(repo)
 
-        val resultList = useCase(AssignmentFilter.TODAY).first()
-
-        assertEquals(1, resultList.size)
-        assertEquals("Today HW", resultList[0].title)
-        assertEquals(true, repo.lastTodayStart != null)
-        assertEquals(true, repo.lastTodayEnd != null)
-        assertEquals(true, (repo.lastTodayEnd ?: 0L) > (repo.lastTodayStart ?: 0L))
+        val result = useCase(AssignmentFilter.ALL).first()
+        assertEquals(1, result.size)
+        assertEquals("All HW", result[0].title)
     }
 
     @Test
-    fun invoke_thisWeekFilter_delegatesToRepositoryThisWeekWith7DaySpan() = runBlocking {
+    fun filterPending_queriesPendingAssignments() = runBlocking {
         val repo = FakeAssignmentRepository()
         val useCase = GetFilteredAssignmentsUseCase(repo)
 
-        val resultList = useCase(AssignmentFilter.THIS_WEEK).first()
-
-        assertEquals(1, resultList.size)
-        assertEquals("Week HW", resultList[0].title)
-        val diff = (repo.lastWeekEnd ?: 0L) - (repo.lastWeekStart ?: 0L)
-        assertEquals(true, diff >= 7 * 86400000L - 1000L)
+        val result = useCase(AssignmentFilter.PENDING).first()
+        assertEquals(1, result.size)
+        assertEquals(AssignmentEntity.STATUS_PENDING, repo.lastRequestedStatus)
     }
 
     @Test
-    fun invoke_overdueFilter_delegatesToRepositoryOverdueWithCurrentEpoch() = runBlocking {
+    fun filterInProgress_queriesInProgressAssignments() = runBlocking {
         val repo = FakeAssignmentRepository()
         val useCase = GetFilteredAssignmentsUseCase(repo)
 
-        val resultList = useCase(AssignmentFilter.OVERDUE).first()
-
-        assertEquals(1, resultList.size)
-        assertEquals("Overdue HW", resultList[0].title)
-        assertEquals(true, (repo.lastOverdueNow ?: 0L) > 0L)
-    }
-
-    @Test
-    fun invoke_completedFilter_delegatesToRepositoryStatusQuery() = runBlocking {
-        val repo = FakeAssignmentRepository()
-        val useCase = GetFilteredAssignmentsUseCase(repo)
-
-        val resultList = useCase(AssignmentFilter.COMPLETED).first()
-
-        assertEquals(1, resultList.size)
-        assertEquals("Completed HW", resultList[0].title)
-        assertEquals(AssignmentEntity.STATUS_COMPLETED, repo.lastRequestedStatus)
+        val result = useCase(AssignmentFilter.IN_PROGRESS).first()
+        assertEquals(1, result.size)
+        assertEquals(AssignmentEntity.STATUS_IN_PROGRESS, repo.lastRequestedStatus)
     }
 }

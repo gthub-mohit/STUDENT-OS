@@ -5,10 +5,15 @@ import com.studentos.core.database.dao.DsaCategoryDao
 import com.studentos.core.database.dao.DsaTopicDao
 import com.studentos.core.database.entity.DsaCategoryEntity
 import com.studentos.core.database.entity.DsaTopicEntity
+import com.studentos.core.events.AppEvent
+import com.studentos.core.events.AppEventBus
 import com.studentos.feature.coding.data.repository.DsaRepositoryImpl
 import com.studentos.feature.coding.domain.model.DsaTopic
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -17,6 +22,15 @@ import org.junit.Before
 import org.junit.Test
 
 class DsaRepositoryTest {
+
+    private class FakeAppEventBus : AppEventBus {
+        private val _events = MutableSharedFlow<AppEvent>()
+        override val events: SharedFlow<AppEvent> = _events.asSharedFlow()
+
+        override suspend fun emit(event: AppEvent) {
+            _events.emit(event)
+        }
+    }
 
     private class FakeDsaCategoryDao : DsaCategoryDao {
         val categories = mutableListOf<DsaCategoryEntity>()
@@ -82,6 +96,7 @@ class DsaRepositoryTest {
             id: Long,
             confidenceLevel: Int,
             revisionStatus: String,
+            nextRevisionDate: Long?,
             notes: String?,
             updatedAt: Long
         ) {
@@ -91,6 +106,7 @@ class DsaRepositoryTest {
                 val updated = current.copy(
                     confidenceLevel = confidenceLevel,
                     revisionStatus = revisionStatus,
+                    nextRevisionDate = nextRevisionDate,
                     notes = notes,
                     updatedAt = updatedAt
                 )
@@ -110,6 +126,8 @@ class DsaRepositoryTest {
         override fun getTopicsByCategory(categoryId: Long): Flow<List<DsaTopicEntity>> = getOrCreateFlow(categoryId)
         override fun getTopicsByRevisionStatus(status: String): Flow<List<DsaTopicEntity>> = flowOf(topics.filter { it.revisionStatus == status })
         override fun getTopicsFilteredBy(revisionStatus: String, confidenceLevel: Int): Flow<List<DsaTopicEntity>> = flowOf(topics.filter { it.revisionStatus == revisionStatus && it.confidenceLevel == confidenceLevel })
+        override fun getAllTopics(): Flow<List<DsaTopicEntity>> = flowOf(topics)
+        override fun getRevisionQueue(nowEpochMs: Long): Flow<List<DsaTopicEntity>> = flowOf(topics.filter { (it.nextRevisionDate ?: Long.MAX_VALUE) <= nowEpochMs })
         override suspend fun getSuggestedTopic(): DsaTopicEntity? = topics.firstOrNull()
         override suspend fun getAllMastered(): Boolean = topics.all { it.confidenceLevel == 5 && it.revisionStatus == "REVISED" }
         override suspend fun getTopicCount(): Int = topics.size
@@ -117,13 +135,15 @@ class DsaRepositoryTest {
 
     private lateinit var categoryDao: FakeDsaCategoryDao
     private lateinit var topicDao: FakeDsaTopicDao
+    private lateinit var eventBus: FakeAppEventBus
     private lateinit var repository: DsaRepositoryImpl
 
     @Before
     fun setUp() {
         categoryDao = FakeDsaCategoryDao()
         topicDao = FakeDsaTopicDao()
-        repository = DsaRepositoryImpl(categoryDao, topicDao)
+        eventBus = FakeAppEventBus()
+        repository = DsaRepositoryImpl(categoryDao, topicDao, eventBus)
     }
 
     @Test

@@ -64,6 +64,7 @@ class AssignmentDetailViewModelTest {
         var attachedSourceUri: String? = null
 
         override fun getAssignmentById(id: Long): Flow<AssignmentEntity?> = flowOf(assignment)
+        override fun getAllAssignments(): Flow<List<AssignmentEntity>> = flowOf(emptyList())
         override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> = error("Not needed")
         override fun getAssignmentsToday(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = error("Not needed")
         override fun getAssignmentsThisWeek(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = error("Not needed")

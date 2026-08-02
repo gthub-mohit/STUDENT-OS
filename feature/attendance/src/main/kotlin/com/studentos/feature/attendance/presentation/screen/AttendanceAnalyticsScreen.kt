@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.studentos.core.database.relation.SubjectAttendanceSummary
 import com.studentos.feature.attendance.domain.calculator.BunkCalculator
 import com.studentos.feature.attendance.presentation.component.AttendancePercentageRow
+import com.studentos.feature.attendance.presentation.component.AttendancePredictionCard
 import com.studentos.feature.attendance.presentation.component.BunkCalculatorWidget
 import com.studentos.feature.attendance.presentation.state.AnalyticsUiState
 import com.studentos.feature.attendance.presentation.viewmodel.AttendanceAnalyticsViewModel
@@ -51,7 +52,7 @@ fun AttendanceAnalyticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Analytics") },
+                title = { Text("Attendance Prediction & Analytics") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -102,6 +103,32 @@ fun AttendanceAnalyticsScreen(
                                 text = "Total Attended: ${state.totalPresentCount} / ${state.totalHeldCount} classes held",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Overall Prediction Card
+                            var totalPresent = 0
+                            var totalAbsent = 0
+                            var totalCancelled = 0
+                            var totalHoliday = 0
+                            var totalExtraPresent = 0
+                            for (s in state.summaries) {
+                                totalPresent += s.presentCount
+                                totalAbsent += s.absentCount
+                                totalCancelled += s.cancelledCount
+                                totalHoliday += s.holidayCount
+                                totalExtraPresent += s.extraPresentCount
+                            }
+
+                            AttendancePredictionCard(
+                                title = "Overall Attendance",
+                                present = totalPresent,
+                                absent = totalAbsent,
+                                cancelled = totalCancelled,
+                                holiday = totalHoliday,
+                                extraPresent = totalExtraPresent,
+                                threshold = state.threshold
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))

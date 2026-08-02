@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.entity.AssignmentEntity
-import com.studentos.core.events.AppResult
 import com.studentos.feature.assignments.domain.model.AssignmentFilter
 import com.studentos.feature.assignments.domain.repository.AssignmentRepository
 import com.studentos.feature.assignments.domain.usecase.CreateAssignmentUseCase
 import com.studentos.feature.assignments.domain.usecase.GetFilteredAssignmentsUseCase
+import com.studentos.feature.assignments.domain.usecase.GetPrioritizedAssignmentsUseCase
 import com.studentos.feature.assignments.domain.usecase.UpdateAssignmentStatusUseCase
 import com.studentos.feature.assignments.presentation.state.AssignmentListUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AssignmentListViewModel @Inject constructor(
     private val getFilteredAssignmentsUseCase: GetFilteredAssignmentsUseCase,
+    private val getPrioritizedAssignmentsUseCase: GetPrioritizedAssignmentsUseCase,
     private val updateAssignmentStatusUseCase: UpdateAssignmentStatusUseCase,
     private val createAssignmentUseCase: CreateAssignmentUseCase,
     private val repository: AssignmentRepository,
@@ -50,13 +51,15 @@ class AssignmentListViewModel @Inject constructor(
             _selectedFilter.flatMapLatest { filter ->
                 getFilteredAssignmentsUseCase(filter)
             },
+            getPrioritizedAssignmentsUseCase(),
             subjectDao.getAllSubjectsIncludingArchived(),
             _selectedFilter,
             _assignmentToDelete
-        ) { assignments, subjects, filter, toDelete ->
+        ) { filteredAssignments, prioritizedGroups, subjects, filter, toDelete ->
             val map = subjects.associate { it.id to it.name }
             AssignmentListUiState.Success(
-                assignments = assignments,
+                assignments = filteredAssignments,
+                prioritizedGroups = prioritizedGroups,
                 subjectsMap = map,
                 currentFilter = filter,
                 assignmentToDelete = toDelete

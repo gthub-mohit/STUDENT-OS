@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface AssignmentRepository {
     fun getAssignmentById(id: Long): Flow<AssignmentEntity?>
+    fun getAllAssignments(): Flow<List<AssignmentEntity>>
     fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>>
     fun getAssignmentsToday(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>>
     fun getAssignmentsThisWeek(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>>

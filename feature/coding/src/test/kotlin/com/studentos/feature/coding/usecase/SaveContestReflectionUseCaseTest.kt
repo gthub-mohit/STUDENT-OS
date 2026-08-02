@@ -2,6 +2,7 @@ package com.studentos.feature.coding.usecase
 
 import com.studentos.core.events.AppEvent
 import com.studentos.core.events.AppEventBus
+import com.studentos.core.events.AppResult
 import com.studentos.feature.coding.domain.model.CpContest
 import com.studentos.feature.coding.domain.model.CpProfile
 import com.studentos.feature.coding.domain.model.CpReflection
@@ -43,6 +44,10 @@ class SaveContestReflectionUseCaseTest {
         override suspend fun saveReflection(reflection: CpReflection) {
             savedReflection = reflection
         }
+
+        override suspend fun syncProfiles(): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun syncProfile(platform: String, handle: String): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun addOrUpdateProfile(platform: String, handle: String): AppResult<Long> = AppResult.Success(1L)
     }
 
     private lateinit var repository: FakeCpRepository

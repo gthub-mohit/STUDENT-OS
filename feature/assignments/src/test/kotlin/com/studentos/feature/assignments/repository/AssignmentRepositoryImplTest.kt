@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -32,7 +33,7 @@ class AssignmentRepositoryImplTest {
     private lateinit var filesDir: File
 
     private class FakeAppEventBus : AppEventBus {
-        private val _events = MutableSharedFlow<AppEvent>(replay = 1)
+        private val _events = MutableSharedFlow<AppEvent>(replay = 10)
         override val events: SharedFlow<AppEvent> = _events.asSharedFlow()
 
         override suspend fun emit(event: AppEvent) {
@@ -70,6 +71,7 @@ class AssignmentRepositoryImplTest {
             lastDeletedId = id
         }
 
+        override fun getAllAssignments(): Flow<List<AssignmentEntity>> = flowOf(emptyList())
         override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> = flowOf(emptyList())
         override fun getAssignmentsToday(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = flowOf(emptyList())
         override fun getAssignmentsThisWeek(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = flowOf(emptyList())
@@ -86,6 +88,76 @@ class AssignmentRepositoryImplTest {
     @Before
     fun setUp() {
         filesDir = tempFolder.newFolder("filesDir")
+    }
+
+    @Test
+    fun createAssignment_emitsAssignmentCreatedEvent() = runBlocking {
+        val dao = FakeAssignmentDao()
+        val bus = FakeAppEventBus()
+        val context = MinimalTestContext(filesDir)
+        val repository = AssignmentRepositoryImpl(dao, bus, context)
+
+        val newAssignment = AssignmentEntity(
+            subjectId = 1L,
+            title = "Math Homework",
+            deadline = System.currentTimeMillis() + 86400000L,
+            createdAt = System.currentTimeMillis()
+        )
+
+        val result = repository.createAssignment(newAssignment)
+        assertTrue(result is AppResult.Success)
+        assertEquals(42L, (result as AppResult.Success).data)
+
+        val event = bus.events.first()
+        assertTrue(event is AppEvent.AssignmentCreated)
+        assertEquals(42L, (event as AppEvent.AssignmentCreated).assignmentId)
+    }
+
+    @Test
+    fun updateStatus_emitsAssignmentStatusChangedEvent() = runBlocking {
+        val initialAssignment = AssignmentEntity(
+            id = 42L,
+            subjectId = 1L,
+            title = "Physics Lab",
+            deadline = System.currentTimeMillis() + 86400000L,
+            status = AssignmentEntity.STATUS_PENDING,
+            createdAt = System.currentTimeMillis()
+        )
+        val dao = FakeAssignmentDao(assignment = initialAssignment)
+        val bus = FakeAppEventBus()
+        val context = MinimalTestContext(filesDir)
+        val repository = AssignmentRepositoryImpl(dao, bus, context)
+
+        val result = repository.updateStatus(42L, AssignmentEntity.STATUS_SUBMITTED)
+        assertTrue(result is AppResult.Success)
+
+        val event = bus.events.first()
+        assertTrue(event is AppEvent.AssignmentStatusChanged)
+        val statusEvent = event as AppEvent.AssignmentStatusChanged
+        assertEquals(42L, statusEvent.assignmentId)
+        assertEquals(AssignmentEntity.STATUS_SUBMITTED, statusEvent.newStatus)
+    }
+
+    @Test
+    fun deleteAssignment_emitsAssignmentDeletedEvent() = runBlocking {
+        val initialAssignment = AssignmentEntity(
+            id = 42L,
+            subjectId = 1L,
+            title = "Attachment HW",
+            deadline = System.currentTimeMillis() + 86400000L,
+            createdAt = System.currentTimeMillis()
+        )
+        val dao = FakeAssignmentDao(assignment = initialAssignment)
+        val bus = FakeAppEventBus()
+        val context = MinimalTestContext(filesDir)
+        val repository = AssignmentRepositoryImpl(dao, bus, context)
+
+        val result = repository.deleteAssignment(42L)
+        assertTrue(result is AppResult.Success)
+
+        val event = bus.events.first()
+        assertTrue(event is AppEvent.AssignmentDeleted)
+        assertEquals(42L, (event as AppEvent.AssignmentDeleted).assignmentId)
     }
 
     @Test
@@ -143,10 +215,8 @@ class AssignmentRepositoryImplTest {
         val result = repository.attachFile(42L, "content://valid/new_path.pdf")
         assertTrue(result is AppResult.Success)
 
-        // Old file must be deleted
         assertFalse(oldFile.exists())
 
-        // New file must exist
         val newRelativePath = (result as AppResult.Success).data
         assertTrue(File(filesDir, newRelativePath).exists())
     }

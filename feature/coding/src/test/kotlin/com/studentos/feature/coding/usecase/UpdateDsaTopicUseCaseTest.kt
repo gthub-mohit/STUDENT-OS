@@ -36,12 +36,16 @@ class UpdateDsaTopicUseCaseTest {
 
         override fun getCategories(): Flow<List<DsaCategory>> = flowOf(emptyList())
         override fun getTopicsByCategory(categoryId: Long): Flow<List<DsaTopic>> = flowOf(emptyList())
+        override fun getAllTopics(): Flow<List<DsaTopic>> = flowOf(emptyList())
+        override fun getRevisionQueue(nowEpochMs: Long): Flow<List<DsaTopic>> = flowOf(emptyList())
         override suspend fun addCategory(name: String, sortOrder: Int): Long = 1L
         override suspend fun deleteCategory(id: Long) {}
         override suspend fun updateTopic(topic: DsaTopic) {
             updatedTopic = topic
         }
         override suspend fun addTopic(topic: DsaTopic): Long = 1L
+        override suspend fun updateTopicConfidence(topicId: Long, confidence: Int): com.studentos.core.events.AppResult<Unit> = com.studentos.core.events.AppResult.Success(Unit)
+        override suspend fun completeRevision(topicId: Long): com.studentos.core.events.AppResult<Unit> = com.studentos.core.events.AppResult.Success(Unit)
     }
 
     private lateinit var repository: FakeDsaRepository

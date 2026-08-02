@@ -20,8 +20,8 @@ interface DsaTopicDao {
     @Update
     suspend fun update(topic: DsaTopicEntity)
 
-    @Query("UPDATE dsa_topics SET confidence_level = :confidenceLevel, revision_status = :revisionStatus, notes = :notes, updated_at = :updatedAt WHERE id = :id")
-    suspend fun updateMastery(id: Long, confidenceLevel: Int, revisionStatus: String, notes: String?, updatedAt: Long)
+    @Query("UPDATE dsa_topics SET confidence_level = :confidenceLevel, revision_status = :revisionStatus, next_revision_date = :nextRevisionDate, notes = :notes, updated_at = :updatedAt WHERE id = :id")
+    suspend fun updateMastery(id: Long, confidenceLevel: Int, revisionStatus: String, nextRevisionDate: Long?, notes: String?, updatedAt: Long)
 
     @Query("DELETE FROM dsa_topics WHERE id = :id")
     suspend fun deleteById(id: Long)
@@ -34,6 +34,12 @@ interface DsaTopicDao {
 
     @Query("SELECT * FROM dsa_topics WHERE revision_status = :revisionStatus AND confidence_level = :confidenceLevel ORDER BY name ASC")
     fun getTopicsFilteredBy(revisionStatus: String, confidenceLevel: Int): Flow<List<DsaTopicEntity>>
+
+    @Query("SELECT * FROM dsa_topics ORDER BY name ASC")
+    fun getAllTopics(): Flow<List<DsaTopicEntity>>
+
+    @Query("SELECT * FROM dsa_topics WHERE next_revision_date IS NOT NULL AND next_revision_date <= :nowEpochMs ORDER BY next_revision_date ASC")
+    fun getRevisionQueue(nowEpochMs: Long): Flow<List<DsaTopicEntity>>
 
     /**
      * Finds the lowest-confidence non-revised topic for daily revision suggestion.

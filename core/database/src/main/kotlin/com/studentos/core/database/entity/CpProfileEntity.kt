@@ -29,6 +29,18 @@ data class CpProfileEntity(
     @ColumnInfo(name = "current_rating")
     val currentRating: Int? = null,
 
+    @ColumnInfo(name = "highest_rating")
+    val highestRating: Int? = null,
+
+    @ColumnInfo(name = "rank")
+    val rank: String? = null,
+
+    @ColumnInfo(name = "problems_solved")
+    val problemsSolved: Int? = null,
+
+    @ColumnInfo(name = "contest_count")
+    val contestCount: Int? = null,
+
     @ColumnInfo(name = "last_synced_at")
     val lastSyncedAt: Long? = null
 ) {

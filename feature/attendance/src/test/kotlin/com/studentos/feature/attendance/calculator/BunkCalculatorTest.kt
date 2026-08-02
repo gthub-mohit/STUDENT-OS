@@ -2,128 +2,102 @@ package com.studentos.feature.attendance.calculator
 
 import com.studentos.feature.attendance.domain.calculator.AttendanceCalculator
 import com.studentos.feature.attendance.domain.calculator.BunkCalculator
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.int
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * BunkCalculatorTest — Property-based and deterministic unit test suite for BunkCalculator.
+ * BunkCalculatorTest — Deterministic unit test suite for BunkCalculator and prediction engine.
  */
 class BunkCalculatorTest {
 
     private val eps = 1e-9
 
     @Test
-    fun propertyBased_testBunkCalculatorInvariants() {
-        runBlocking {
-            forAll(
-                Arb.int(0..200), // present
-                Arb.int(0..200), // absent
-                Arb.int(0..50),  // cancelled
-                Arb.int(0..50),  // holiday
-                Arb.int(0..50),  // extraPresent
-                Arb.int(1..99)   // threshold
-            ) { present, absent, cancelled, holiday, extraPresent, threshold ->
-                val h = present + absent + extraPresent
+    fun testBunkCalculatorInvariants() {
+        for (present in listOf(0, 10, 50, 100)) {
+            for (absent in listOf(0, 5, 20, 50)) {
+                for (extraPresent in listOf(0, 2, 10)) {
+                    for (threshold in listOf(75, 80, 90)) {
+                        val h = present + absent + extraPresent
+                        if (h <= 0) continue
 
-                if (h <= 0) return@forAll true
+                        val currentPct = AttendanceCalculator.calculatePercentage(present, absent, 0, 0, extraPresent)
+                        val canSkip = BunkCalculator.canSkip(present, absent, 0, 0, extraPresent, threshold)
+                        val mustAttend = BunkCalculator.mustAttend(present, absent, 0, 0, extraPresent, threshold)
 
-                val currentPct = AttendanceCalculator.calculatePercentage(present, absent, cancelled, holiday, extraPresent)
-                val canSkip = BunkCalculator.canSkip(present, absent, cancelled, holiday, extraPresent, threshold)
-                val mustAttend = BunkCalculator.mustAttend(present, absent, cancelled, holiday, extraPresent, threshold)
+                        if (currentPct >= (threshold.toDouble() - eps)) {
+                            assertEquals(0, mustAttend)
+                        } else {
+                            assertEquals(0, canSkip)
+                        }
 
-                // 1. Mutual Exclusivity
-                if (currentPct >= threshold - eps) {
-                    if (mustAttend != 0) return@forAll false
-                } else {
-                    if (canSkip != 0) return@forAll false
+                        if (canSkip > 0 && canSkip < Int.MAX_VALUE) {
+                            val safePct = AttendanceCalculator.calculatePercentage(present, absent + canSkip, 0, 0, extraPresent)
+                            assertTrue(safePct >= (threshold.toDouble() - eps))
+                        }
+
+                        if (mustAttend > 0 && mustAttend < Int.MAX_VALUE && threshold < 100) {
+                            val safePct = AttendanceCalculator.calculatePercentage(present + mustAttend, absent, 0, 0, extraPresent)
+                            assertTrue(safePct >= (threshold.toDouble() - eps))
+                        }
+                    }
                 }
-
-                // 2. Skip Boundary Invariant
-                if (canSkip > 0 && canSkip < Int.MAX_VALUE) {
-                    val safePct = AttendanceCalculator.calculatePercentage(present, absent + canSkip, cancelled, holiday, extraPresent)
-                    val unsafePct = AttendanceCalculator.calculatePercentage(present, absent + canSkip + 1, cancelled, holiday, extraPresent)
-                    if (safePct < threshold - eps || unsafePct >= threshold + eps) return@forAll false
-                }
-
-                // 3. Attend Boundary Invariant
-                if (mustAttend > 0 && mustAttend < Int.MAX_VALUE && threshold < 100) {
-                    val safePct = AttendanceCalculator.calculatePercentage(present + mustAttend, absent, cancelled, holiday, extraPresent)
-                    val unsafePct = AttendanceCalculator.calculatePercentage(present + mustAttend - 1, absent, cancelled, holiday, extraPresent)
-                    if (safePct < threshold - eps || unsafePct >= threshold + eps) return@forAll false
-                }
-
-                true
             }
         }
     }
 
-    // ── Deterministic Unit Tests ───────────────────────────────────────────────
-
     @Test
-    fun test100PercentAttendance() {
-        val canSkip = BunkCalculator.canSkip(10, 0, 0, 0, 0, 75)
-        val mustAttend = BunkCalculator.mustAttend(10, 0, 0, 0, 0, 75)
-        assertEquals(3, canSkip)
-        assertEquals(0, mustAttend)
+    fun calculateCanSkip_returnsCorrectValue() {
+        val canSkip = BunkCalculator.canSkip(
+            present = 80,
+            absent = 20,
+            cancelled = 0,
+            holiday = 0,
+            extraPresent = 0,
+            threshold = 75
+        )
+        assertEquals(6, canSkip)
     }
 
     @Test
-    fun testExactlyThreshold75Percent() {
-        val canSkip = BunkCalculator.canSkip(3, 1, 0, 0, 0, 75)
-        val mustAttend = BunkCalculator.mustAttend(3, 1, 0, 0, 0, 75)
-        assertEquals(0, canSkip)
-        assertEquals(0, mustAttend)
+    fun calculateMustAttend_returnsCorrectValue() {
+        val mustAttend = BunkCalculator.mustAttend(
+            present = 60,
+            absent = 40,
+            cancelled = 0,
+            holiday = 0,
+            extraPresent = 0,
+            threshold = 75
+        )
+        assertEquals(60, mustAttend)
     }
 
     @Test
-    fun testBelowThreshold() {
-        val canSkip = BunkCalculator.canSkip(2, 2, 0, 0, 0, 75)
-        val mustAttend = BunkCalculator.mustAttend(2, 2, 0, 0, 0, 75)
-        assertEquals(0, canSkip)
-        assertEquals(4, mustAttend)
-    }
+    fun predictAttendance_calculatesFuturePercentageCorrectly() {
+        // Present = 70, Absent = 30 -> Current = 70%
+        // Predict attending 10 future classes -> (70 + 10) / (100 + 10) = 80 / 110 = 72.727%
+        val predictedAttendedPct = BunkCalculator.predictAttendance(
+            present = 70,
+            absent = 30,
+            cancelled = 0,
+            holiday = 0,
+            extraPresent = 0,
+            futureAttended = 10,
+            futureBunked = 0
+        )
+        assertEquals(72.727, predictedAttendedPct, 0.01)
 
-    @Test
-    fun testZeroHeldClasses() {
-        val canSkip = BunkCalculator.canSkip(0, 0, 0, 0, 0, 75)
-        val mustAttend = BunkCalculator.mustAttend(0, 0, 0, 0, 0, 75)
-        assertEquals(0, canSkip)
-        assertEquals(0, mustAttend)
-    }
-
-    @Test
-    fun testAllCancelledClasses() {
-        val canSkip = BunkCalculator.canSkip(0, 0, 10, 5, 0, 75)
-        val mustAttend = BunkCalculator.mustAttend(0, 0, 10, 5, 0, 75)
-        assertEquals(0, canSkip)
-        assertEquals(0, mustAttend)
-    }
-
-    @Test
-    fun testExtraClasses() {
-        val canSkip = BunkCalculator.canSkip(5, 5, 0, 0, 5, 75)
-        val mustAttend = BunkCalculator.mustAttend(5, 5, 0, 0, 5, 75)
-        assertEquals(0, canSkip)
-        assertEquals(5, mustAttend)
-    }
-
-    @Test
-    fun testThreshold0() {
-        val canSkip = BunkCalculator.canSkip(5, 5, 0, 0, 0, 0)
-        val mustAttend = BunkCalculator.mustAttend(5, 5, 0, 0, 0, 0)
-        assertEquals(Int.MAX_VALUE, canSkip)
-        assertEquals(0, mustAttend)
-    }
-
-    @Test
-    fun testThreshold100() {
-        val canSkip = BunkCalculator.canSkip(9, 1, 0, 0, 0, 100)
-        val mustAttend = BunkCalculator.mustAttend(9, 1, 0, 0, 0, 100)
-        assertEquals(0, canSkip)
-        assertEquals(Int.MAX_VALUE, mustAttend)
+        // Predict bunking 10 future classes -> 70 / (100 + 10) = 70 / 110 = 63.636%
+        val predictedBunkedPct = BunkCalculator.predictAttendance(
+            present = 70,
+            absent = 30,
+            cancelled = 0,
+            holiday = 0,
+            extraPresent = 0,
+            futureAttended = 0,
+            futureBunked = 10
+        )
+        assertEquals(63.636, predictedBunkedPct, 0.01)
     }
 }

@@ -7,7 +7,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * DsaTopicEntity — Individual DSA topics within a category, tracking mastery status.
+ * DsaTopicEntity — Individual DSA topics within a category, tracking mastery status and revision queue.
  *
  * Foreign Key: category_id -> dsa_categories(id) ON DELETE RESTRICT
  * Constraints:
@@ -41,11 +41,17 @@ data class DsaTopicEntity(
     @ColumnInfo(name = "name")
     val name: String,
 
+    @ColumnInfo(name = "difficulty", defaultValue = "'MEDIUM'")
+    val difficulty: String = DIFFICULTY_MEDIUM,
+
     @ColumnInfo(name = "confidence_level", defaultValue = "1")
     val confidenceLevel: Int = 1,
 
     @ColumnInfo(name = "revision_status", defaultValue = "'NOT_STARTED'")
     val revisionStatus: String = STATUS_NOT_STARTED,
+
+    @ColumnInfo(name = "next_revision_date")
+    val nextRevisionDate: Long? = null,
 
     @ColumnInfo(name = "notes")
     val notes: String? = null,
@@ -57,5 +63,9 @@ data class DsaTopicEntity(
         const val STATUS_NOT_STARTED = "NOT_STARTED"
         const val STATUS_IN_PROGRESS = "IN_PROGRESS"
         const val STATUS_REVISED = "REVISED"
+
+        const val DIFFICULTY_EASY = "EASY"
+        const val DIFFICULTY_MEDIUM = "MEDIUM"
+        const val DIFFICULTY_HARD = "HARD"
     }
 }

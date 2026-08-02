@@ -17,6 +17,7 @@ class CreateAssignmentUseCaseTest {
         var createdAssignment: AssignmentEntity? = null
 
         override fun getAssignmentById(id: Long): Flow<AssignmentEntity?> = error("Not needed")
+        override fun getAllAssignments(): Flow<List<AssignmentEntity>> = error("Not needed")
         override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> = error("Not needed")
         override fun getAssignmentsToday(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = error("Not needed")
         override fun getAssignmentsThisWeek(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = error("Not needed")

@@ -1,14 +1,16 @@
 package com.studentos.feature.attendance.presentation
 
-import com.studentos.core.database.dao.ClassEventDao
 import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.entity.ClassEventEntity
 import com.studentos.core.database.entity.SettingEntity
 import com.studentos.core.database.entity.SubjectEntity
+import com.studentos.core.database.entity.TimetableSlotEntity
 import com.studentos.core.database.relation.SubjectAttendanceSummary
 import com.studentos.core.events.AppResult
+import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import com.studentos.feature.attendance.domain.repository.ClassEventRepository
 import com.studentos.feature.attendance.domain.repository.SubjectRepository
+import com.studentos.feature.attendance.domain.repository.TimetableRepository
 import com.studentos.feature.attendance.domain.usecase.AddExtraClassUseCase
 import com.studentos.feature.attendance.domain.usecase.UpdateClassEventStatusUseCase
 import com.studentos.feature.attendance.presentation.state.WeeklyUiState
@@ -31,6 +33,15 @@ class WeeklyViewModelTest {
         override suspend fun set(setting: SettingEntity) {}
     }
 
+    private class FakeTimetableRepository : TimetableRepository {
+        override fun getAllSlots(): Flow<List<TimetableSlotEntity>> = flowOf(emptyList())
+        override suspend fun importTimetable(
+            slots: List<ParsedTimetableSlot>,
+            replaceExisting: Boolean,
+            horizonDays: Int
+        ): AppResult<Unit> = AppResult.Success(Unit)
+    }
+
     private class FakeSubjectRepository : SubjectRepository {
         override fun getActiveSubjects(): Flow<List<SubjectEntity>> {
             return flowOf(listOf(SubjectEntity(id = 1, name = "Maths")))
@@ -44,6 +55,7 @@ class WeeklyViewModelTest {
 
     private class FakeClassEventRepository : ClassEventRepository {
         var updatedStatus: String? = null
+        var addedExtraSubjectId: Long? = null
 
         override fun getEventsForSubject(subjectId: Long): Flow<List<ClassEventEntity>> = error("Not needed")
         override fun getEventsForDay(startEpoch: Long, endEpoch: Long): Flow<List<ClassEventEntity>> = error("Not needed")
@@ -74,7 +86,10 @@ class WeeklyViewModelTest {
             scheduledAt: Long,
             endAt: Long,
             linkedSlotId: Long?
-        ): AppResult<Long> = error("Not needed")
+        ): AppResult<Long> {
+            addedExtraSubjectId = subjectId
+            return AppResult.Success(99L)
+        }
     }
 
     @Test
@@ -82,6 +97,7 @@ class WeeklyViewModelTest {
         runBlocking {
             val fakeRepo = FakeClassEventRepository()
             val fakeSubjectRepo = FakeSubjectRepository()
+            val fakeTimetableRepo = FakeTimetableRepository()
             val fakeSettingsDao = FakeSettingsDao()
             val updateUseCase = UpdateClassEventStatusUseCase(fakeRepo)
             val addUseCase = AddExtraClassUseCase(fakeRepo)
@@ -89,6 +105,7 @@ class WeeklyViewModelTest {
             val viewModel = WeeklyViewModel(
                 classEventRepository = fakeRepo,
                 subjectRepository = fakeSubjectRepo,
+                timetableRepository = fakeTimetableRepo,
                 settingsDao = fakeSettingsDao,
                 updateClassEventStatusUseCase = updateUseCase,
                 addExtraClassUseCase = addUseCase
@@ -100,6 +117,8 @@ class WeeklyViewModelTest {
             assertEquals(75, success.threshold)
             assertEquals(1, success.subjects.size)
             assertEquals("Maths", success.subjects[0].name)
+            assertEquals(0, success.weekOffset)
+            assertEquals("This Week", success.weekLabel)
         }
     }
 
@@ -108,6 +127,7 @@ class WeeklyViewModelTest {
         runBlocking {
             val fakeRepo = FakeClassEventRepository()
             val fakeSubjectRepo = FakeSubjectRepository()
+            val fakeTimetableRepo = FakeTimetableRepository()
             val fakeSettingsDao = FakeSettingsDao()
             val updateUseCase = UpdateClassEventStatusUseCase(fakeRepo)
             val addUseCase = AddExtraClassUseCase(fakeRepo)
@@ -115,15 +135,44 @@ class WeeklyViewModelTest {
             val viewModel = WeeklyViewModel(
                 classEventRepository = fakeRepo,
                 subjectRepository = fakeSubjectRepo,
+                timetableRepository = fakeTimetableRepo,
                 settingsDao = fakeSettingsDao,
                 updateClassEventStatusUseCase = updateUseCase,
                 addExtraClassUseCase = addUseCase
             )
 
-            val initialState = viewModel.uiState.first { it is WeeklyUiState.Success }
             viewModel.selectDay(3)
             val updatedState = viewModel.uiState.first { (it as? WeeklyUiState.Success)?.selectedDayOfWeek == 3 } as WeeklyUiState.Success
             assertEquals(3, updatedState.selectedDayOfWeek)
+        }
+    }
+
+    @Test
+    fun weekNavigation_previousAndNextWeek() {
+        runBlocking {
+            val fakeRepo = FakeClassEventRepository()
+            val fakeSubjectRepo = FakeSubjectRepository()
+            val fakeTimetableRepo = FakeTimetableRepository()
+            val fakeSettingsDao = FakeSettingsDao()
+            val updateUseCase = UpdateClassEventStatusUseCase(fakeRepo)
+            val addUseCase = AddExtraClassUseCase(fakeRepo)
+
+            val viewModel = WeeklyViewModel(
+                classEventRepository = fakeRepo,
+                subjectRepository = fakeSubjectRepo,
+                timetableRepository = fakeTimetableRepo,
+                settingsDao = fakeSettingsDao,
+                updateClassEventStatusUseCase = updateUseCase,
+                addExtraClassUseCase = addUseCase
+            )
+
+            viewModel.previousWeek()
+            val prevWeekState = viewModel.uiState.first { (it as? WeeklyUiState.Success)?.weekOffset == -1 } as WeeklyUiState.Success
+            assertEquals(-1, prevWeekState.weekOffset)
+
+            viewModel.nextWeek()
+            val currentWeekState = viewModel.uiState.first { (it as? WeeklyUiState.Success)?.weekOffset == 0 } as WeeklyUiState.Success
+            assertEquals(0, currentWeekState.weekOffset)
         }
     }
 }

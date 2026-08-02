@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.studentos.core.database.entity.AssignmentEntity
 import com.studentos.feature.assignments.presentation.component.AssignmentCard
 import com.studentos.feature.assignments.presentation.component.AssignmentFilterTabs
+import com.studentos.feature.assignments.presentation.component.PrioritizedAssignmentList
 import com.studentos.feature.assignments.presentation.state.AssignmentListUiState
 import com.studentos.feature.assignments.presentation.viewmodel.AssignmentListViewModel
 
@@ -50,11 +53,12 @@ fun AssignmentListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
+    var isPrioritizedView by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Assignments") }
+                title = { Text("Assignments & Deadlines") }
             )
         },
         floatingActionButton = {
@@ -69,10 +73,31 @@ fun AssignmentListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            AssignmentFilterTabs(
-                selectedFilter = selectedFilter,
-                onFilterSelected = { viewModel.selectFilter(it) }
-            )
+            // View Mode Toggle (Filtered List vs Urgent Prioritized View)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = !isPrioritizedView,
+                    onClick = { isPrioritizedView = false },
+                    label = { Text("Filtered View") }
+                )
+                FilterChip(
+                    selected = isPrioritizedView,
+                    onClick = { isPrioritizedView = true },
+                    label = { Text("Urgent & Prioritized") }
+                )
+            }
+
+            if (!isPrioritizedView) {
+                AssignmentFilterTabs(
+                    selectedFilter = selectedFilter,
+                    onFilterSelected = { viewModel.selectFilter(it) }
+                )
+            }
 
             when (val state = uiState) {
                 is AssignmentListUiState.Loading -> {
@@ -86,43 +111,61 @@ fun AssignmentListScreen(
                     }
                 }
                 is AssignmentListUiState.Success -> {
-                    if (state.assignments.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "No assignments found.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    if (isPrioritizedView) {
+                        if (state.prioritizedGroups.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "No upcoming deadlines.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            PrioritizedAssignmentList(
+                                groups = state.prioritizedGroups,
+                                subjectsMap = state.subjectsMap,
+                                onAssignmentClick = onNavigateToDetail,
+                                onDeleteClick = { viewModel.requestDelete(it) },
+                                onStatusClick = { viewModel.cycleStatus(it) },
+                                modifier = Modifier.padding(16.dp)
                             )
                         }
                     } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(state.assignments, key = { it.id }) { assignment ->
-                                val subjectName = state.subjectsMap[assignment.subjectId] ?: "Subject"
-                                AssignmentCard(
-                                    assignment = assignment,
-                                    subjectName = subjectName,
-                                    onClick = { onNavigateToDetail(assignment.id) },
-                                    onDeleteClick = { viewModel.requestDelete(assignment) },
-                                    onStatusClick = { viewModel.cycleStatus(assignment) }
+                        if (state.assignments.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "No assignments found for this filter.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(state.assignments, key = { it.id }) { assignment ->
+                                    val subjectName = state.subjectsMap[assignment.subjectId] ?: "Subject ${assignment.subjectId}"
+                                    AssignmentCard(
+                                        assignment = assignment,
+                                        subjectName = subjectName,
+                                        onClick = { onNavigateToDetail(assignment.id) },
+                                        onDeleteClick = { viewModel.requestDelete(assignment) },
+                                        onStatusClick = { viewModel.cycleStatus(assignment) }
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // Delete Confirmation Dialog for PENDING/IN_PROGRESS assignments
-                    state.assignmentToDelete?.let { assignment ->
+                    state.assignmentToDelete?.let { toDelete ->
                         AlertDialog(
                             onDismissRequest = { viewModel.dismissDeleteDialog() },
-                            title = { Text("Delete Assignment") },
-                            text = { Text("Are you sure you want to delete '${assignment.title}'?") },
+                            title = { Text("Confirm Deletion") },
+                            text = { Text("Are you sure you want to delete '${toDelete.title}'?") },
                             confirmButton = {
-                                Button(
-                                    onClick = { viewModel.confirmDelete() }
-                                ) {
+                                Button(onClick = { viewModel.confirmDelete() }) {
                                     Text("Delete")
                                 }
                             },
@@ -136,58 +179,62 @@ fun AssignmentListScreen(
                 }
             }
         }
+
+        if (showCreateDialog) {
+            CreateAssignmentSimpleDialog(
+                onDismiss = { showCreateDialog = false },
+                onConfirm = { subjectId, title, desc, deadline, priority ->
+                    viewModel.createAssignment(subjectId, title, desc, deadline, priority)
+                }
+            )
+        }
     }
+}
 
-    if (showCreateDialog) {
-        var titleText by remember { mutableStateOf("") }
-        var descriptionText by remember { mutableStateOf("") }
-        var selectedSubjectId by remember { mutableStateOf(1L) }
-        var selectedPriority by remember { mutableStateOf(AssignmentEntity.PRIORITY_MEDIUM) }
+@Composable
+private fun CreateAssignmentSimpleDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (subjectId: Long, title: String, description: String?, deadline: Long, priority: String) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
 
-        AlertDialog(
-            onDismissRequest = { showCreateDialog = false },
-            title = { Text("New Assignment") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = titleText,
-                        onValueChange = { titleText = it },
-                        label = { Text("Assignment Title") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = descriptionText,
-                        onValueChange = { descriptionText = it },
-                        label = { Text("Description (Optional)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (titleText.isNotBlank()) {
-                            val deadline = System.currentTimeMillis() + 86400000L * 2 // Default 2 days
-                            viewModel.createAssignment(
-                                subjectId = selectedSubjectId,
-                                title = titleText,
-                                description = descriptionText.ifBlank { null },
-                                deadline = deadline,
-                                priority = selectedPriority
-                            )
-                            showCreateDialog = false
-                        }
-                    }
-                ) {
-                    Text("Create")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) {
-                    Text("Cancel")
-                }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Assignment") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description (Optional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-        )
-    }
+        },
+        confirmButton = {
+            Button(
+                enabled = title.isNotBlank(),
+                onClick = {
+                    val defaultDeadline = System.currentTimeMillis() + 86400000L
+                    onConfirm(1L, title, description.ifBlank { null }, defaultDeadline, AssignmentEntity.PRIORITY_HIGH)
+                    onDismiss()
+                }
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

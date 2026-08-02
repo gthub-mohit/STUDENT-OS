@@ -12,6 +12,7 @@ import com.studentos.core.events.AppError
 import com.studentos.core.events.AppResult
 import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import com.studentos.feature.attendance.domain.repository.TimetableRepository
+import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -25,6 +26,10 @@ class TimetableRepositoryImpl @Inject constructor(
     private val classEventDao: ClassEventDao
 ) : TimetableRepository {
 
+    override fun getAllSlots(): Flow<List<TimetableSlotEntity>> {
+        return timetableSlotDao.getAllSlots()
+    }
+
     override suspend fun importTimetable(
         slots: List<ParsedTimetableSlot>,
         replaceExisting: Boolean,
@@ -32,7 +37,6 @@ class TimetableRepositoryImpl @Inject constructor(
     ): AppResult<Unit> {
         return try {
             database.withTransaction {
-                // If replaceExisting == false, check if subjects exist
                 if (!replaceExisting) {
                     val existingSubjectCount = subjectDao.getSubjectCount()
                     if (existingSubjectCount > 0) {
@@ -42,22 +46,18 @@ class TimetableRepositoryImpl @Inject constructor(
                     }
                 }
 
-                // Delete existing timetable slots if replacing
                 if (replaceExisting) {
                     timetableSlotDao.deleteAll()
                 }
 
                 val now = System.currentTimeMillis()
 
-                // Process each slot
                 for (slot in slots) {
-                    // 1. Get or create subject
                     val existingSubject = subjectDao.getByName(slot.subjectName)
                     val subjectId = existingSubject?.id ?: subjectDao.insert(
                         SubjectEntity(name = slot.subjectName)
                     )
 
-                    // 2. Insert TimetableSlot
                     val slotId = timetableSlotDao.insert(
                         TimetableSlotEntity(
                             subjectId = subjectId,
@@ -69,7 +69,6 @@ class TimetableRepositoryImpl @Inject constructor(
                         )
                     )
 
-                    // 3. Generate ClassEvents for next N days matching slot.dayOfWeek
                     val cal = Calendar.getInstance()
                     for (dayOffset in 0 until horizonDays) {
                         val currentDayOfWeek = when (cal.get(Calendar.DAY_OF_WEEK)) {
@@ -119,7 +118,7 @@ class TimetableRepositoryImpl @Inject constructor(
             val diffMinutes = if (endMinutes > startMinutes) endMinutes - startMinutes else 60
             diffMinutes * 60 * 1000L
         } catch (e: Exception) {
-            3600000L // Default 1 hour duration
+            3600000L
         }
     }
 }

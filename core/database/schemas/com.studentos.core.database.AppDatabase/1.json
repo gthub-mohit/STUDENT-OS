@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "99220be866cad9453bcfc6c32ad52db3",
+    "identityHash": "0dceda7cbc40153a456890d25a11e6ec",
     "entities": [
       {
         "tableName": "settings",
@@ -454,7 +454,7 @@
       },
       {
         "tableName": "cp_profiles",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `platform` TEXT NOT NULL, `handle` TEXT NOT NULL, `current_rating` INTEGER, `last_synced_at` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `platform` TEXT NOT NULL, `handle` TEXT NOT NULL, `current_rating` INTEGER, `highest_rating` INTEGER, `rank` TEXT, `problems_solved` INTEGER, `contest_count` INTEGER, `last_synced_at` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -477,6 +477,30 @@
           {
             "fieldPath": "currentRating",
             "columnName": "current_rating",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "highestRating",
+            "columnName": "highest_rating",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rank",
+            "columnName": "rank",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "problemsSolved",
+            "columnName": "problems_solved",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "contestCount",
+            "columnName": "contest_count",
             "affinity": "INTEGER",
             "notNull": false
           },
@@ -707,7 +731,7 @@
       },
       {
         "tableName": "dsa_topics",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `category_id` INTEGER NOT NULL, `name` TEXT NOT NULL, `confidence_level` INTEGER NOT NULL DEFAULT 1, `revision_status` TEXT NOT NULL DEFAULT 'NOT_STARTED', `notes` TEXT, `updated_at` INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(`category_id`) REFERENCES `dsa_categories`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `category_id` INTEGER NOT NULL, `name` TEXT NOT NULL, `difficulty` TEXT NOT NULL DEFAULT 'MEDIUM', `confidence_level` INTEGER NOT NULL DEFAULT 1, `revision_status` TEXT NOT NULL DEFAULT 'NOT_STARTED', `next_revision_date` INTEGER, `notes` TEXT, `updated_at` INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(`category_id`) REFERENCES `dsa_categories`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -728,6 +752,13 @@
             "notNull": true
           },
           {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'MEDIUM'"
+          },
+          {
             "fieldPath": "confidenceLevel",
             "columnName": "confidence_level",
             "affinity": "INTEGER",
@@ -740,6 +771,12 @@
             "affinity": "TEXT",
             "notNull": true,
             "defaultValue": "'NOT_STARTED'"
+          },
+          {
+            "fieldPath": "nextRevisionDate",
+            "columnName": "next_revision_date",
+            "affinity": "INTEGER",
+            "notNull": false
           },
           {
             "fieldPath": "notes",
@@ -1396,7 +1433,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '99220be866cad9453bcfc6c32ad52db3')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0dceda7cbc40153a456890d25a11e6ec')"
     ]
   }
 }

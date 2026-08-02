@@ -44,7 +44,7 @@ class KnowledgeTreeViewModelTest {
         }
     }
 
-    private class FakeDsaRepository : DsaRepository {
+    private class FakeDsaRepository(private val eventBus: AppEventBus) : DsaRepository {
         val categoriesFlow = MutableStateFlow<List<DsaCategory>>(emptyList())
         val topicsMap = mutableMapOf<Long, MutableStateFlow<List<DsaTopic>>>()
 
@@ -77,12 +77,24 @@ class KnowledgeTreeViewModelTest {
             }
         }
 
+        override fun getAllTopics(): Flow<List<DsaTopic>> = flowOf(emptyList())
+        override fun getRevisionQueue(nowEpochMs: Long): Flow<List<DsaTopic>> = flowOf(emptyList())
+
         override suspend fun addTopic(topic: DsaTopic): Long {
             val flow = getTopicsFlow(topic.categoryId)
             val id = (flow.value.size + 1).toLong()
             val created = topic.copy(id = id)
             flow.value = flow.value + created
             return id
+        }
+
+        override suspend fun updateTopicConfidence(topicId: Long, confidence: Int): com.studentos.core.events.AppResult<Unit> {
+            eventBus.emit(AppEvent.DsaTopicUpdated(topicId))
+            return com.studentos.core.events.AppResult.Success(Unit)
+        }
+        override suspend fun completeRevision(topicId: Long): com.studentos.core.events.AppResult<Unit> {
+            eventBus.emit(AppEvent.DsaTopicUpdated(topicId))
+            return com.studentos.core.events.AppResult.Success(Unit)
         }
     }
 
@@ -97,8 +109,8 @@ class KnowledgeTreeViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        repository = FakeDsaRepository()
         eventBus = FakeAppEventBus()
+        repository = FakeDsaRepository(eventBus)
         addCategoryUseCase = AddDsaCategoryUseCase(repository)
         deleteCategoryUseCase = DeleteDsaCategoryUseCase(repository)
         updateTopicUseCase = UpdateDsaTopicUseCase(repository, eventBus)

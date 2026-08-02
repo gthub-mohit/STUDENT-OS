@@ -1,6 +1,7 @@
 package com.studentos.feature.attendance.presentation.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +12,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,12 +36,30 @@ import java.util.Locale
 fun ClassEventCard(
     event: ClassEventEntity,
     subjectName: String,
+    roomLocation: String? = null,
     onStatusSelected: (Long, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var pendingStatusToConfirm by remember { mutableStateOf<String?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
     val now = System.currentTimeMillis()
     val isFutureEvent = event.scheduledAt > now
+
+    val availableStatuses = listOf(
+        ClassEventEntity.STATUS_PRESENT,
+        ClassEventEntity.STATUS_ABSENT,
+        ClassEventEntity.STATUS_CANCELLED,
+        ClassEventEntity.STATUS_HOLIDAY,
+        ClassEventEntity.STATUS_UNMARKED
+    )
+
+    fun requestStatusChange(newStatus: String) {
+        if (isFutureEvent) {
+            pendingStatusToConfirm = newStatus
+        } else {
+            onStatusSelected(event.id, newStatus)
+        }
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -54,16 +75,28 @@ fun ClassEventCard(
                     text = subjectName,
                     style = MaterialTheme.typography.titleMedium
                 )
-                StatusChip(
-                    currentStatus = event.status,
-                    onStatusClick = { nextStatus ->
-                        if (isFutureEvent) {
-                            pendingStatusToConfirm = nextStatus
-                        } else {
-                            onStatusSelected(event.id, nextStatus)
+
+                Box {
+                    StatusChip(
+                        currentStatus = event.status,
+                        onStatusClick = { menuExpanded = true }
+                    )
+
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        availableStatuses.forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status) },
+                                onClick = {
+                                    menuExpanded = false
+                                    requestStatusChange(status)
+                                }
+                            )
                         }
                     }
-                )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -72,11 +105,31 @@ fun ClassEventCard(
             val startTime = timeFormat.format(Date(event.scheduledAt))
             val endTime = timeFormat.format(Date(event.endAt))
 
-            Text(
-                text = "$startTime - $endTime",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "$startTime - $endTime",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val displayLocation = when {
+                    event.isExtra -> "Extra Class"
+                    !roomLocation.isNull_or_blank() -> "Room: $roomLocation"
+                    else -> null
+                }
+
+                if (displayLocation != null) {
+                    Text(
+                        text = displayLocation,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 
@@ -104,20 +157,15 @@ fun ClassEventCard(
     }
 }
 
+private fun String?.isNull_or_blank(): Boolean {
+    return this == null || this.trim().isEmpty()
+}
+
 @Composable
 private fun StatusChip(
     currentStatus: String,
-    onStatusClick: (String) -> Unit
+    onStatusClick: () -> Unit
 ) {
-    val nextStatus = when (currentStatus) {
-        ClassEventEntity.STATUS_UNMARKED -> ClassEventEntity.STATUS_PRESENT
-        ClassEventEntity.STATUS_PRESENT -> ClassEventEntity.STATUS_ABSENT
-        ClassEventEntity.STATUS_ABSENT -> ClassEventEntity.STATUS_CANCELLED
-        ClassEventEntity.STATUS_CANCELLED -> ClassEventEntity.STATUS_HOLIDAY
-        ClassEventEntity.STATUS_HOLIDAY -> ClassEventEntity.STATUS_PRESENT
-        else -> ClassEventEntity.STATUS_PRESENT
-    }
-
     val (chipColor, textColor) = when (currentStatus) {
         ClassEventEntity.STATUS_PRESENT, ClassEventEntity.STATUS_EXTRA_CLASS -> Color(0xFFD4EDDA) to Color(0xFF155724)
         ClassEventEntity.STATUS_ABSENT -> Color(0xFFF8D7DA) to Color(0xFF721C24)
@@ -128,7 +176,7 @@ private fun StatusChip(
 
     FilterChip(
         selected = true,
-        onClick = { onStatusClick(nextStatus) },
+        onClick = onStatusClick,
         label = { Text(text = currentStatus, color = textColor) }
     )
 }

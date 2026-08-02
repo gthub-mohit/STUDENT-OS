@@ -21,6 +21,15 @@ class GetFilteredAssignmentsUseCase @Inject constructor(
         zoneId: ZoneId = ZoneId.systemDefault()
     ): Flow<List<AssignmentEntity>> {
         return when (filter) {
+            AssignmentFilter.ALL -> {
+                repository.getAllAssignments()
+            }
+            AssignmentFilter.PENDING -> {
+                repository.getAssignmentsByStatus(AssignmentEntity.STATUS_PENDING)
+            }
+            AssignmentFilter.IN_PROGRESS -> {
+                repository.getAssignmentsByStatus(AssignmentEntity.STATUS_IN_PROGRESS)
+            }
             AssignmentFilter.TODAY -> {
                 val zonedDateTime = Instant.ofEpochMilli(nowEpoch).atZone(zoneId)
                 val startOfDay = zonedDateTime.toLocalDate().atStartOfDay(zoneId).toInstant().toEpochMilli()

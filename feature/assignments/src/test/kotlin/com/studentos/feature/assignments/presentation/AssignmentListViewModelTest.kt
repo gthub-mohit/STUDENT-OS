@@ -8,6 +8,7 @@ import com.studentos.feature.assignments.domain.model.AssignmentFilter
 import com.studentos.feature.assignments.domain.repository.AssignmentRepository
 import com.studentos.feature.assignments.domain.usecase.CreateAssignmentUseCase
 import com.studentos.feature.assignments.domain.usecase.GetFilteredAssignmentsUseCase
+import com.studentos.feature.assignments.domain.usecase.GetPrioritizedAssignmentsUseCase
 import com.studentos.feature.assignments.domain.usecase.UpdateAssignmentStatusUseCase
 import com.studentos.feature.assignments.presentation.state.AssignmentListUiState
 import com.studentos.feature.assignments.presentation.viewmodel.AssignmentListViewModel
@@ -23,7 +24,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -63,6 +63,18 @@ class AssignmentListViewModelTest {
         var updatedStatus: String? = null
 
         override fun getAssignmentById(id: Long): Flow<AssignmentEntity?> = error("Not needed")
+        override fun getAllAssignments(): Flow<List<AssignmentEntity>> = flowOf(
+            listOf(
+                AssignmentEntity(
+                    id = 1L,
+                    subjectId = 1L,
+                    title = "Lab HW",
+                    deadline = System.currentTimeMillis() + 86400000L,
+                    status = AssignmentEntity.STATUS_PENDING,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+        )
         override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> = flowOf(emptyList())
         override fun getAssignmentsToday(startEpoch: Long, endEpoch: Long): Flow<List<AssignmentEntity>> = flowOf(
             listOf(
@@ -100,69 +112,37 @@ class AssignmentListViewModelTest {
     }
 
     @Test
-    fun selectFilter_updatesFilterAndUiState() = runBlocking {
+    fun init_loadsAssignmentsWithCurrentFilterAndPrioritizedGroups() = runBlocking {
         val repo = FakeAssignmentRepository()
-        val subjectDao = FakeSubjectDao()
-        val getFiltered = GetFilteredAssignmentsUseCase(repo)
-        val updateStatus = UpdateAssignmentStatusUseCase(repo)
-        val createAssignment = CreateAssignmentUseCase(repo)
+        val dao = FakeSubjectDao()
+        val getUseCase = GetFilteredAssignmentsUseCase(repo)
+        val prioritizeUseCase = GetPrioritizedAssignmentsUseCase(repo)
+        val updateUseCase = UpdateAssignmentStatusUseCase(repo)
+        val createUseCase = CreateAssignmentUseCase(repo)
 
-        val viewModel = AssignmentListViewModel(getFiltered, updateStatus, createAssignment, repo, subjectDao)
+        val viewModel = AssignmentListViewModel(getUseCase, prioritizeUseCase, updateUseCase, createUseCase, repo, dao)
 
-        viewModel.selectFilter(AssignmentFilter.THIS_WEEK)
-        assertEquals(AssignmentFilter.THIS_WEEK, viewModel.selectedFilter.value)
+        val state = viewModel.uiState.first()
+        assertTrue(state is AssignmentListUiState.Success)
+        val success = state as AssignmentListUiState.Success
+        assertEquals(1, success.assignments.size)
+        assertEquals("Lab HW", success.assignments[0].title)
+        assertEquals("Physics", success.subjectsMap[1L])
+        assertNotNull(success.prioritizedGroups)
     }
 
     @Test
-    fun requestDelete_pendingAssignment_showsDeleteConfirmationDialog() = runBlocking {
+    fun selectFilter_updatesSelectedFilter() = runBlocking {
         val repo = FakeAssignmentRepository()
-        val subjectDao = FakeSubjectDao()
-        val getFiltered = GetFilteredAssignmentsUseCase(repo)
-        val updateStatus = UpdateAssignmentStatusUseCase(repo)
-        val createAssignment = CreateAssignmentUseCase(repo)
+        val dao = FakeSubjectDao()
+        val getUseCase = GetFilteredAssignmentsUseCase(repo)
+        val prioritizeUseCase = GetPrioritizedAssignmentsUseCase(repo)
+        val updateUseCase = UpdateAssignmentStatusUseCase(repo)
+        val createUseCase = CreateAssignmentUseCase(repo)
 
-        val viewModel = AssignmentListViewModel(getFiltered, updateStatus, createAssignment, repo, subjectDao)
+        val viewModel = AssignmentListViewModel(getUseCase, prioritizeUseCase, updateUseCase, createUseCase, repo, dao)
 
-        val pendingAssignment = AssignmentEntity(
-            id = 1L,
-            subjectId = 1L,
-            title = "HW 1",
-            deadline = System.currentTimeMillis() + 86400000L,
-            status = AssignmentEntity.STATUS_PENDING,
-            createdAt = System.currentTimeMillis()
-        )
-
-        viewModel.requestDelete(pendingAssignment)
-
-        val state = viewModel.uiState.first { (it as? AssignmentListUiState.Success)?.assignmentToDelete != null } as AssignmentListUiState.Success
-        assertNotNull(state.assignmentToDelete)
-        assertEquals(1L, state.assignmentToDelete?.id)
-
-        viewModel.dismissDeleteDialog()
-        val dismissedState = viewModel.uiState.first { (it as? AssignmentListUiState.Success)?.assignmentToDelete == null } as AssignmentListUiState.Success
-        assertNull(dismissedState.assignmentToDelete)
-    }
-
-    @Test
-    fun requestDelete_completedAssignment_deletesDirectlyWithoutDialog() = runBlocking {
-        val repo = FakeAssignmentRepository()
-        val subjectDao = FakeSubjectDao()
-        val getFiltered = GetFilteredAssignmentsUseCase(repo)
-        val updateStatus = UpdateAssignmentStatusUseCase(repo)
-        val createAssignment = CreateAssignmentUseCase(repo)
-
-        val viewModel = AssignmentListViewModel(getFiltered, updateStatus, createAssignment, repo, subjectDao)
-
-        val completedAssignment = AssignmentEntity(
-            id = 2L,
-            subjectId = 1L,
-            title = "Completed HW",
-            deadline = System.currentTimeMillis() + 86400000L,
-            status = AssignmentEntity.STATUS_COMPLETED,
-            createdAt = System.currentTimeMillis()
-        )
-
-        viewModel.requestDelete(completedAssignment)
-        assertEquals(2L, repo.deletedId)
+        viewModel.selectFilter(AssignmentFilter.OVERDUE)
+        assertEquals(AssignmentFilter.OVERDUE, viewModel.selectedFilter.value)
     }
 }

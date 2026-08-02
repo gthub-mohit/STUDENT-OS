@@ -32,6 +32,9 @@ interface AssignmentDao {
     @Query("DELETE FROM assignments WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("SELECT * FROM assignments ORDER BY deadline ASC")
+    fun getAllAssignments(): Flow<List<AssignmentEntity>>
+
     @Query("SELECT * FROM assignments WHERE status = :status ORDER BY deadline ASC")
     fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>>
 
