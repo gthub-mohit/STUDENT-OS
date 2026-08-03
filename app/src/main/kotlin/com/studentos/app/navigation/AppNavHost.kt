@@ -37,12 +37,12 @@ import com.studentos.feature.intelligence.navigation.intelligenceNavGraph
 private fun initDefaultModuleRegistry() {
     if (ModuleRegistry.graphs.isNotEmpty()) return
 
-    // 1. Intelligence / Daily Brief (Real Feature Graph Integrated)
+    // 1. Intelligence / Home + Daily Brief (Real Feature Graph Integrated)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "intelligence"
         override val navItem = NavigationItem(
-            route = "intelligence/daily-brief",
-            title = "Daily Brief",
+            route = "home",
+            title = "Home",
             icon = Icons.Default.Home
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
@@ -152,7 +152,7 @@ private fun initDefaultModuleRegistry() {
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = "intelligence/daily-brief"
+    startDestination: String = "home"
 ) {
     initDefaultModuleRegistry()
 

@@ -42,7 +42,7 @@ import com.studentos.core.database.entity.TimetableSlotEntity
 /**
  * AppDatabase — Main Room database class for Student OS.
  *
- * Configured with version = 1 and exportSchema = true.
+ * Configured with version = 2 and exportSchema = true.
  */
 @Database(
     entities = [
@@ -65,7 +65,7 @@ import com.studentos.core.database.entity.TimetableSlotEntity
         RecommendationCacheEntity::class,
         AiCallLogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

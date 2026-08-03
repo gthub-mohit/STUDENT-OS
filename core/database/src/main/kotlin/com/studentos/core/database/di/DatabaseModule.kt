@@ -23,6 +23,7 @@ import com.studentos.core.database.dao.RecommendationCacheDao
 import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.dao.TimetableSlotDao
+import com.studentos.core.database.migration.MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -49,6 +50,7 @@ object DatabaseModule {
         )
             // Enable Write-Ahead Logging (WAL mode) for concurrency and performance
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(MIGRATION_1_2)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -63,110 +65,56 @@ object DatabaseModule {
     }
 
     @Provides
-    @Singleton
-    fun provideSettingsDao(database: AppDatabase): SettingsDao {
-        return database.settingsDao()
-    }
+    fun provideSettingsDao(database: AppDatabase): SettingsDao = database.settingsDao()
 
     @Provides
-    @Singleton
-    fun provideSubjectDao(database: AppDatabase): SubjectDao {
-        return database.subjectDao()
-    }
+    fun provideSubjectDao(database: AppDatabase): SubjectDao = database.subjectDao()
 
     @Provides
-    @Singleton
-    fun provideTimetableSlotDao(database: AppDatabase): TimetableSlotDao {
-        return database.timetableSlotDao()
-    }
+    fun provideTimetableSlotDao(database: AppDatabase): TimetableSlotDao = database.timetableSlotDao()
 
     @Provides
-    @Singleton
-    fun provideClassEventDao(database: AppDatabase): ClassEventDao {
-        return database.classEventDao()
-    }
+    fun provideClassEventDao(database: AppDatabase): ClassEventDao = database.classEventDao()
 
     @Provides
-    @Singleton
-    fun provideAssignmentDao(database: AppDatabase): AssignmentDao {
-        return database.assignmentDao()
-    }
+    fun provideAssignmentDao(database: AppDatabase): AssignmentDao = database.assignmentDao()
 
     @Provides
-    @Singleton
-    fun provideCpProfileDao(database: AppDatabase): CpProfileDao {
-        return database.cpProfileDao()
-    }
+    fun provideCpProfileDao(database: AppDatabase): CpProfileDao = database.cpProfileDao()
 
     @Provides
-    @Singleton
-    fun provideCpContestDao(database: AppDatabase): CpContestDao {
-        return database.cpContestDao()
-    }
+    fun provideCpContestDao(database: AppDatabase): CpContestDao = database.cpContestDao()
 
     @Provides
-    @Singleton
-    fun provideCpReflectionDao(database: AppDatabase): CpReflectionDao {
-        return database.cpReflectionDao()
-    }
+    fun provideCpReflectionDao(database: AppDatabase): CpReflectionDao = database.cpReflectionDao()
 
     @Provides
-    @Singleton
-    fun provideDsaCategoryDao(database: AppDatabase): DsaCategoryDao {
-        return database.dsaCategoryDao()
-    }
+    fun provideDsaCategoryDao(database: AppDatabase): DsaCategoryDao = database.dsaCategoryDao()
 
     @Provides
-    @Singleton
-    fun provideDsaTopicDao(database: AppDatabase): DsaTopicDao {
-        return database.dsaTopicDao()
-    }
+    fun provideDsaTopicDao(database: AppDatabase): DsaTopicDao = database.dsaTopicDao()
 
     @Provides
-    @Singleton
-    fun provideProjectDao(database: AppDatabase): ProjectDao {
-        return database.projectDao()
-    }
+    fun provideProjectDao(database: AppDatabase): ProjectDao = database.projectDao()
 
     @Provides
-    @Singleton
-    fun provideProjectTaskDao(database: AppDatabase): ProjectTaskDao {
-        return database.projectTaskDao()
-    }
+    fun provideProjectTaskDao(database: AppDatabase): ProjectTaskDao = database.projectTaskDao()
 
     @Provides
-    @Singleton
-    fun provideMilestoneDao(database: AppDatabase): MilestoneDao {
-        return database.milestoneDao()
-    }
+    fun provideMilestoneDao(database: AppDatabase): MilestoneDao = database.milestoneDao()
 
     @Provides
-    @Singleton
-    fun provideBugDao(database: AppDatabase): BugDao {
-        return database.bugDao()
-    }
+    fun provideBugDao(database: AppDatabase): BugDao = database.bugDao()
 
     @Provides
-    @Singleton
-    fun provideProjectResourceDao(database: AppDatabase): ProjectResourceDao {
-        return database.projectResourceDao()
-    }
+    fun provideProjectResourceDao(database: AppDatabase): ProjectResourceDao = database.projectResourceDao()
 
     @Provides
-    @Singleton
-    fun provideDailyBriefDao(database: AppDatabase): DailyBriefDao {
-        return database.dailyBriefDao()
-    }
+    fun provideDailyBriefDao(database: AppDatabase): DailyBriefDao = database.dailyBriefDao()
 
     @Provides
-    @Singleton
-    fun provideRecommendationCacheDao(database: AppDatabase): RecommendationCacheDao {
-        return database.recommendationCacheDao()
-    }
+    fun provideRecommendationCacheDao(database: AppDatabase): RecommendationCacheDao = database.recommendationCacheDao()
 
     @Provides
-    @Singleton
-    fun provideAiCallLogDao(database: AppDatabase): AiCallLogDao {
-        return database.aiCallLogDao()
-    }
+    fun provideAiCallLogDao(database: AppDatabase): AiCallLogDao = database.aiCallLogDao()
 }

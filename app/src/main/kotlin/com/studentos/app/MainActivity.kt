@@ -6,18 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.studentos.app.navigation.AppNavHost
 import com.studentos.app.navigation.BottomNavBar
@@ -48,10 +43,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Routes where the bottom navigation bar should be hidden (detail screens). */
+private val detailRoutes = setOf(
+    "intelligence/daily-brief?date={date}",
+    "intelligence/history",
+    "settings/main"
+)
+
 @Composable
 private fun StudentOsAppContent() {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val showBottomBar = currentRoute !in detailRoutes
 
     MaterialTheme {
         Surface(
@@ -59,21 +64,10 @@ private fun StudentOsAppContent() {
             color = MaterialTheme.colorScheme.background
         ) {
             Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Student OS") },
-                        actions = {
-                            IconButton(onClick = { navController.navigate("settings/main") }) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Settings"
-                                )
-                            }
-                        }
-                    )
-                },
                 bottomBar = {
-                    BottomNavBar(navController = navController)
+                    if (showBottomBar) {
+                        BottomNavBar(navController = navController)
+                    }
                 }
             ) { innerPadding ->
                 AppNavHost(
@@ -84,3 +78,4 @@ private fun StudentOsAppContent() {
         }
     }
 }
+

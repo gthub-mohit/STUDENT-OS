@@ -1,5 +1,6 @@
 package com.studentos.feature.intelligence.presentation.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -25,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,6 +47,7 @@ fun DailyBriefScreen(
     uiState: DailyBriefUiState,
     onGenerateClick: () -> Unit,
     onRetryClick: () -> Unit,
+    onBackClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -55,13 +56,24 @@ fun DailyBriefScreen(
         topBar = {
             TopAppBar(
                 title = { Text(text = "Daily Brief") },
-                actions = {
-                    IconButton(onClick = onHistoryClick) {
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "History"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
                         )
                     }
+                },
+                actions = {
+                    Text(
+                        text = "History →",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clickable(onClick = onHistoryClick)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
                 }
             )
         },
@@ -144,55 +156,7 @@ fun DailyBriefScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // 1. Header Section
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Date: ${brief.date}",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = if (brief.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.secondary
-                                            }
-                                        ) {
-                                            Text(
-                                                text = if (brief.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) "AI" else "Offline",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-                                    if (uiState.lastUpdatedFormatted.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Last updated: ${uiState.lastUpdatedFormatted}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // 2. Daily Score Card
+                        // 1. Daily Score Card
                         item {
                             ScoreSummaryCard(
                                 date = brief.date,
@@ -245,22 +209,13 @@ fun DailyBriefScreen(
                             }
                         }
 
-                        // 4. Recommendation Cards
+                        // 3. Recommendation Cards
                         item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Today's Recommendations",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                OutlinedButton(onClick = onGenerateClick) {
-                                    Text(text = "Refresh")
-                                }
-                            }
+                            Text(
+                                text = "Today's Recommendations",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
                         if (uiState.recommendations.isEmpty()) {

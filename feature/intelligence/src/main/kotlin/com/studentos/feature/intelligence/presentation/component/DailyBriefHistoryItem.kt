@@ -8,9 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,8 +27,10 @@ import androidx.compose.ui.unit.dp
 import com.studentos.feature.intelligence.domain.model.DailyBrief
 import com.studentos.feature.intelligence.domain.model.DailyBriefSummaryDomain
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun DailyBriefHistoryItem(
@@ -31,6 +38,15 @@ fun DailyBriefHistoryItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Friendly date: "Mon, 4 Aug" or fallback to raw
+    val friendlyDate = try {
+        val parsed = LocalDate.parse(summary.date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        parsed.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault()))
+    } catch (_: Exception) {
+        summary.date
+    }
+
+    // Generated time: "14:30"
     val formattedTime = try {
         Instant.ofEpochMilli(summary.generatedAt)
             .atZone(ZoneId.systemDefault())
@@ -38,6 +54,11 @@ fun DailyBriefHistoryItem(
     } catch (_: Exception) {
         ""
     }
+
+    // Score percentage
+    val scorePercent = if (summary.scoreTarget > 0) {
+        (summary.scoreActual * 100 / summary.scoreTarget).coerceIn(0, 100)
+    } else 0
 
     Card(
         modifier = modifier
@@ -47,76 +68,77 @@ fun DailyBriefHistoryItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = summary.date,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (summary.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    }
+            // Left content
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = if (summary.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) "AI Engine" else "Offline Engine",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        text = friendlyDate,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
                         color = if (summary.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
+                            MaterialTheme.colorScheme.primaryContainer
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                            MaterialTheme.colorScheme.surfaceVariant
                         }
-                    )
+                    ) {
+                        Text(
+                            text = if (summary.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) "AI" else "Offline",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            color = if (summary.guidanceSource == DailyBrief.GUIDANCE_SOURCE_LLM) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Score: ${summary.scoreActual} / ${summary.scoreTarget}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                if (formattedTime.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "Generated at $formattedTime",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.outline
+                        text = "${summary.scoreActual}/${summary.scoreTarget} ($scorePercent%)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (formattedTime.isNotEmpty()) {
+                        Text(
+                            text = "at $formattedTime",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
 
-            if (!summary.llmGuidance.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = summary.llmGuidance,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
-                )
-            }
+            // Trailing chevron
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "Open",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
+

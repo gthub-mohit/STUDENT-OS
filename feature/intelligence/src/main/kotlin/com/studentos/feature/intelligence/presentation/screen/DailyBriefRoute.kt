@@ -9,6 +9,7 @@ import com.studentos.feature.intelligence.presentation.viewmodel.DailyBriefViewM
 
 @Composable
 fun DailyBriefRoute(
+    onBackClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -20,8 +21,10 @@ fun DailyBriefRoute(
         uiState = uiState,
         onGenerateClick = { viewModel.generateTodayBrief() },
         onRetryClick = { viewModel.loadTodayBrief() },
+        onBackClick = onBackClick,
         onHistoryClick = onHistoryClick,
         onNavigate = onNavigate,
         modifier = modifier
     )
 }
+
