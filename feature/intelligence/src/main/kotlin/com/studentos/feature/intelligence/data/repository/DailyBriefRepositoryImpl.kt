@@ -59,14 +59,37 @@ class DailyBriefRepositoryImpl @Inject constructor(
         return dailyBriefDao.getBriefByHash(hash)?.toDomain()
     }
 
+    private fun sanitizeGuidance(raw: String?): String? {
+        if (raw.isNullOrBlank()) return raw
+        var cleaned = raw
+        if (cleaned.startsWith("Mock Brief Guidance:", ignoreCase = true)) {
+            cleaned = cleaned.substringAfter("Mock Brief Guidance:").trim()
+        }
+        if (cleaned.contains("[Prompt length:", ignoreCase = true)) {
+            cleaned = cleaned.substringBefore("[Prompt length:").trim()
+        }
+        if (cleaned.contains("[Delta length:", ignoreCase = true)) {
+            cleaned = cleaned.substringBefore("[Delta length:").trim()
+        }
+        return cleaned
+    }
+
+    private fun sanitizeSource(source: String): String {
+        return if (source.equals("MOCK", ignoreCase = true)) {
+            DailyBrief.GUIDANCE_SOURCE_DETERMINISTIC
+        } else {
+            source
+        }
+    }
+
     private fun DailyBriefEntity.toDomain() = DailyBrief(
         id = id,
         date = date,
         jsonSnapshot = jsonSnapshot,
         snapshotHash = snapshotHash,
-        briefJson = briefJson,
-        llmGuidance = llmGuidance,
-        guidanceSource = guidanceSource,
+        briefJson = sanitizeGuidance(briefJson) ?: briefJson,
+        llmGuidance = sanitizeGuidance(llmGuidance),
+        guidanceSource = sanitizeSource(guidanceSource),
         scoreTarget = scoreTarget,
         scoreActual = scoreActual,
         generatedAt = generatedAt,
@@ -78,9 +101,9 @@ class DailyBriefRepositoryImpl @Inject constructor(
         date = date,
         scoreTarget = scoreTarget,
         scoreActual = scoreActual,
-        guidanceSource = guidanceSource,
+        guidanceSource = sanitizeSource(guidanceSource),
         generatedAt = generatedAt,
-        llmGuidance = llmGuidance
+        llmGuidance = sanitizeGuidance(llmGuidance)
     )
 
     private fun DailyBrief.toEntity() = DailyBriefEntity(

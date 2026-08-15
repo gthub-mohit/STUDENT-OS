@@ -151,4 +151,43 @@ class DailyBriefViewModelTest {
         assertEquals("Attend Physics", state.recommendations.first().title)
         assertEquals("weekly", state.recommendations.first().actionRoute)
     }
+
+    @Test
+    fun initialState_autoGenerates_whenLegacyMockBriefExistsForToday() = runTest {
+        val todayLocalDate = LocalDate.of(2026, 8, 1)
+        val legacyMockBrief = DailyBrief(
+            date = "2026-08-01",
+            jsonSnapshot = "{}",
+            snapshotHash = "hash123",
+            briefJson = "[]",
+            llmGuidance = "Mock Brief Guidance: Prioritize upcoming deadlines\n[Prompt length: 83]",
+            guidanceSource = "MOCK",
+            scoreTarget = 100,
+            scoreActual = 100
+        )
+        coEvery { repository.getBriefForDate("2026-08-01") } returns flowOf(legacyMockBrief)
+
+        val freshBrief = DailyBrief(
+            date = "2026-08-01",
+            jsonSnapshot = "{}",
+            snapshotHash = "hash456",
+            briefJson = "[]",
+            llmGuidance = "Prioritize upcoming deadlines and complete scheduled classes.",
+            guidanceSource = DailyBrief.GUIDANCE_SOURCE_LLM,
+            scoreTarget = 100,
+            scoreActual = 100
+        )
+        coEvery { orchestrator.generateMorningBrief(todayLocalDate) } returns freshBrief
+
+        viewModel = DailyBriefViewModel(
+            repository = repository,
+            orchestrator = orchestrator,
+            clock = clock,
+            savedStateHandle = SavedStateHandle()
+        )
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { orchestrator.generateMorningBrief(todayLocalDate) }
+    }
 }

@@ -24,7 +24,15 @@ class RecommendationCache @Inject constructor(
         val now = clock.millis()
         val age = now - entity.createdAt
 
-        if (age < 0 || age > TTL_MS) {
+        val isInvalid = age < 0 ||
+                age > TTL_MS ||
+                entity.provider.equals("MockProvider", ignoreCase = true) ||
+                entity.provider.equals("MOCK", ignoreCase = true) ||
+                entity.llmResponse.contains("Mock Brief Guidance", ignoreCase = true) ||
+                entity.llmResponse.contains("Prompt length", ignoreCase = true) ||
+                entity.llmResponse.contains("Delta length", ignoreCase = true)
+
+        if (isInvalid) {
             recommendationCacheDao.deleteByHash(snapshotHash)
             return null
         }
