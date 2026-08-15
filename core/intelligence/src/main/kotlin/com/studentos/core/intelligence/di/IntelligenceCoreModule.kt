@@ -1,7 +1,7 @@
 package com.studentos.core.intelligence.di
 
+import com.studentos.core.intelligence.provider.DeepSeekProvider
 import com.studentos.core.intelligence.provider.LLMProvider
-import com.studentos.core.intelligence.provider.MockProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -14,5 +14,5 @@ abstract class IntelligenceCoreModule {
 
     @Binds
     @Singleton
-    abstract fun bindLLMProvider(impl: MockProvider): LLMProvider
+    abstract fun bindLLMProvider(impl: DeepSeekProvider): LLMProvider
 }

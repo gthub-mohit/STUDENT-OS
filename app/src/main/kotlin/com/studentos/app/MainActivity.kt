@@ -16,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.studentos.app.navigation.AppNavHost
 import com.studentos.app.navigation.BottomNavBar
+import com.studentos.app.navigation.initDefaultModuleRegistry
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -33,6 +34,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Pre-initialize navigation modules so bottom navigation items are available immediately on first frame.
+        initDefaultModuleRegistry()
 
         // Draw content edge-to-edge under system bars (Material 3 recommendation).
         enableEdgeToEdge()
@@ -78,4 +82,3 @@ private fun StudentOsAppContent() {
         }
     }
 }
-

@@ -119,7 +119,7 @@ class DeterministicFallback @Inject constructor() {
         val sortedItems = items.sortedBy { it.priority }
 
         val summaryText = if (sortedItems.isNotEmpty()) {
-            "Offline Daily Guidance: Top focus is ${sortedItems.first().title}."
+            "Top focus for today is ${sortedItems.first().title}."
         } else {
             "All tasks completed and attendance is healthy. Great job!"
         }

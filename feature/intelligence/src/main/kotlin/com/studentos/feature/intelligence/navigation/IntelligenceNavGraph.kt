@@ -20,6 +20,9 @@ fun NavGraphBuilder.intelligenceNavGraph(navController: NavHostController) {
             onNavigate = { route ->
                 navController.navigate(route)
             },
+            onHistoryClick = {
+                navController.navigate("intelligence/history")
+            },
             onSettingsClick = {
                 navController.navigate("settings/main")
             }

@@ -7,12 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,13 +30,13 @@ import com.studentos.feature.coding.navigation.codingNavGraph
 import com.studentos.feature.intelligence.navigation.intelligenceNavGraph
 
 /**
- * Default feature module navigation graph implementations for Student OS.
- * These establish the initial module graphs registered into [ModuleRegistry].
+ * Initializes the default module registry graphs and bottom navigation destinations.
+ * Safe to call multiple times (idempotent).
  */
-private fun initDefaultModuleRegistry() {
+fun initDefaultModuleRegistry() {
     if (ModuleRegistry.graphs.isNotEmpty()) return
 
-    // 1. Intelligence / Home + Daily Brief (Real Feature Graph Integrated)
+    // 1. Intelligence / Home + Daily Brief
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "intelligence"
         override val navItem = NavigationItem(
@@ -50,12 +49,12 @@ private fun initDefaultModuleRegistry() {
         }
     })
 
-    // 2. Attendance Module (Real Feature Graph Integrated)
+    // 2. Attendance Module
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "attendance"
         override val navItem = NavigationItem(
             route = "weekly",
-            title = "Attendance",
+            title = "Attend",
             icon = Icons.Default.DateRange
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
@@ -63,12 +62,12 @@ private fun initDefaultModuleRegistry() {
         }
     })
 
-    // 3. Assignments Module (Real Feature Graph Integrated)
+    // 3. Assignments Module
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "assignments"
         override val navItem = NavigationItem(
             route = "assignments/list",
-            title = "Assignments",
+            title = "Tasks",
             icon = Icons.Default.Edit
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
@@ -76,12 +75,12 @@ private fun initDefaultModuleRegistry() {
         }
     })
 
-    // 4. Coding Module (Real Feature Graph Integrated)
+    // 4. Coding Module
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "coding"
         override val navItem = NavigationItem(
             route = CodingNavGraph.ROUTE_CP_DASHBOARD,
-            title = "Coding",
+            title = "Code",
             icon = Icons.Default.Build
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
@@ -89,13 +88,13 @@ private fun initDefaultModuleRegistry() {
         }
     })
 
-    // 5. Projects Module (Placeholder - Group 7)
+    // 5. Projects Module
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "projects"
         override val navItem = NavigationItem(
             route = "projects/list",
             title = "Projects",
-            icon = Icons.Default.List
+            icon = Icons.AutoMirrored.Filled.List
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
             builder.composable("projects/list") {
@@ -128,7 +127,7 @@ private fun initDefaultModuleRegistry() {
         }
     })
 
-    // 6. Settings Module (Placeholder - Group 8)
+    // 6. Settings Module
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "settings"
         override val navItem = null
@@ -145,8 +144,6 @@ private fun initDefaultModuleRegistry() {
 
 /**
  * AppNavHost — root Compose navigation graph for Student OS.
- *
- * Dynamically builds the NavHost by querying [ModuleRegistry] for all registered feature graphs.
  */
 @Composable
 fun AppNavHost(

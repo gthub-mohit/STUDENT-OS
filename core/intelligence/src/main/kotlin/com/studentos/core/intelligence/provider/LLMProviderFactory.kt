@@ -11,11 +11,11 @@ class LLMProviderFactory @Inject constructor(
     private val deepSeekProvider: DeepSeekProvider
 ) {
     suspend fun getProvider(): LLMProvider {
-        val providerSetting = settingsDao.get("ai_provider") ?: PROVIDER_MOCK
+        val providerSetting = settingsDao.get("ai_provider") ?: PROVIDER_DEEPSEEK
         return when (providerSetting.uppercase()) {
             PROVIDER_DEEPSEEK -> deepSeekProvider
             PROVIDER_MOCK -> mockProvider
-            else -> mockProvider
+            else -> deepSeekProvider
         }
     }
 

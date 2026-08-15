@@ -32,7 +32,7 @@ class MockProviderTest {
         assertEquals(result1, result2)
 
         val success = result1 as LLMResult.Success
-        assertTrue(success.text.contains("Mock Brief Guidance"))
+        assertEquals("Prioritize upcoming deadlines and complete scheduled classes.", success.text)
         assertTrue(success.tokenCount > 0)
     }
 
@@ -46,7 +46,7 @@ class MockProviderTest {
         assertEquals(result1, result2)
 
         val success = result1 as LLMResult.Success
-        assertTrue(success.text.contains("Mock Intra-Day Update"))
+        assertEquals("Progress recorded. Continue focusing on high priority tasks.", success.text)
         assertTrue(success.tokenCount > 0)
     }
 }

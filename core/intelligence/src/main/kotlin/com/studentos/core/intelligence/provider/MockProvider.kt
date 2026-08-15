@@ -10,20 +10,16 @@ class MockProvider @Inject constructor() : LLMProvider {
     override val name: String = "MockProvider"
 
     override suspend fun generateBrief(prompt: String): LLMResult {
-        val deterministicContent = "Mock Brief Guidance: Prioritize upcoming deadlines and complete scheduled classes."
-        val mockTokenCount = prompt.length / 4 + 30
         return LLMResult.Success(
-            text = "$deterministicContent [Prompt length: ${prompt.length}]",
-            tokenCount = mockTokenCount
+            text = "Prioritize upcoming deadlines and complete scheduled classes.",
+            tokenCount = 40
         )
     }
 
     override suspend fun updateGuidance(prompt: String): LLMResult {
-        val deterministicContent = "Mock Intra-Day Update: Progress recorded. Continue focusing on high priority tasks."
-        val mockTokenCount = prompt.length / 4 + 15
         return LLMResult.Success(
-            text = "$deterministicContent [Delta length: ${prompt.length}]",
-            tokenCount = mockTokenCount
+            text = "Progress recorded. Continue focusing on high priority tasks.",
+            tokenCount = 25
         )
     }
 

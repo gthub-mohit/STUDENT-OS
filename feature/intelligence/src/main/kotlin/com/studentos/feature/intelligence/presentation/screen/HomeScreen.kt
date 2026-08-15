@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,19 +19,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -39,12 +42,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.studentos.feature.intelligence.domain.model.RecommendationCard
+import com.studentos.feature.intelligence.domain.model.ComingUpItem
+import com.studentos.feature.intelligence.domain.model.TodayFocusItem
 import com.studentos.feature.intelligence.presentation.state.HomeUiState
 import java.time.LocalDate
 import java.time.LocalTime
@@ -53,17 +59,57 @@ import java.util.Locale
 
 // ── Accent palette ────────────────────────────────────────────────────────────
 private val HeroPurple = Color(0xFF7C3AED)
-private val HeroPurpleLight = Color(0xFF9F67FF)
-private val HeroPurpleDark = Color(0xFF5B21B6)
 private val OnHero = Color.White
 
 /**
- * HomeScreen — the redesigned Student OS home screen.
+ * Clock/History Material vector icon.
+ */
+private val HistoryClockIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "HistoryClock",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).path(
+        fill = SolidColor(Color.Black)
+    ) {
+        moveTo(13.0f, 3.0f)
+        curveTo(8.03f, 3.0f, 4.0f, 7.03f, 4.0f, 12.0f)
+        horizontalLineTo(1.0f)
+        lineToRelative(4.0f, 4.0f)
+        lineToRelative(4.0f, -4.0f)
+        horizontalLineTo(6.0f)
+        curveToRelative(0.0f, -3.87f, 3.13f, -7.0f, 7.0f, -7.0f)
+        curveToRelative(3.87f, 0.0f, 7.0f, 3.13f, 7.0f, 7.0f)
+        reflectiveCurveToRelative(-3.13f, 7.0f, -7.0f, 7.0f)
+        curveToRelative(-1.93f, 0.0f, -3.68f, -0.79f, -4.94f, -2.06f)
+        lineToRelative(-1.42f, 1.42f)
+        curveTo(8.27f, 19.99f, 10.51f, 21.0f, 13.0f, 21.0f)
+        curveToRelative(4.97f, 0.0f, 9.0f, -4.03f, 9.0f, -9.0f)
+        reflectiveCurveToRelative(-4.03f, -9.0f, -9.0f, -9.0f)
+        close()
+        moveTo(12.0f, 8.0f)
+        verticalLineToRelative(5.0f)
+        lineToRelative(4.25f, 2.52f)
+        lineToRelative(0.77f, -1.28f)
+        lineToRelative(-3.52f, -2.09f)
+        verticalLineTo(8.0f)
+        horizontalLineTo(12.0f)
+        close()
+    }.build()
+}
+
+/**
+ * HomeScreen — Redesigned Student OS home screen based on finalized UX decisions.
  *
- * Three sections:
- * 1. Hero Card (purple accent, fully clickable → Daily Brief)
- * 2. Today's Focus (top 3 actionable recommendations)
- * 3. Quick Access (4 compact navigation cards)
+ * Major Sections:
+ * 1. Header (Greeting + Date + History & Settings action buttons)
+ * 2. Today's Progress Hero Card (Dominant purple card, single-source-of-truth progress)
+ * 3. Today's Focus (Up to 3 actionable priorities with interactive checkboxes)
+ * 4. Coming Up (Up to 3 nearest upcoming deadlines/classes/contests/milestones)
+ *
+ * Quick Access grid is completely removed to optimize vertical hierarchy.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,9 +118,12 @@ fun HomeScreen(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onHeroClick: () -> Unit,
-    onRecommendationClick: (String) -> Unit,
+    onToggleFocusItem: (TodayFocusItem) -> Unit,
+    onFocusItemClick: (String) -> Unit,
+    onComingUpItemClick: (String) -> Unit,
+    onViewAllComingUpClick: () -> Unit,
+    onHistoryClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onQuickNavClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     PullToRefreshBox(
@@ -88,30 +137,37 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            // ── Header: Greeting + Date + Settings ──────────────────────────
-            HeaderSection(onSettingsClick = onSettingsClick)
+            // ── Section 1: Header ───────────────────────────────────────────
+            HeaderSection(
+                onHistoryClick = onHistoryClick,
+                onSettingsClick = onSettingsClick
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Section 1: Hero Card ────────────────────────────────────────
-            HeroCard(
+            // ── Section 2: Today's Progress Hero Card ───────────────────────
+            TodaysProgressHeroCard(
                 uiState = uiState,
                 onClick = onHeroClick
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ── Section 2: Today's Focus ────────────────────────────────────
-            if (uiState.topRecommendations.isNotEmpty()) {
-                TodaysFocusSection(
-                    recommendations = uiState.topRecommendations,
-                    onRecommendationClick = onRecommendationClick
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-            }
+            // ── Section 3: Today's Focus ────────────────────────────────────
+            TodaysFocusSection(
+                focusItems = uiState.focusItems,
+                onToggleItem = onToggleFocusItem,
+                onItemClick = onFocusItemClick
+            )
 
-            // ── Section 3: Quick Access ─────────────────────────────────────
-            QuickAccessSection(onQuickNavClick = onQuickNavClick)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Section 4: Coming Up ────────────────────────────────────────
+            ComingUpSection(
+                comingUpItems = uiState.comingUpItems,
+                onItemClick = onComingUpItemClick,
+                onViewAllClick = onViewAllComingUpClick
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -119,11 +175,14 @@ fun HomeScreen(
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Header Section
+// Section 1 — Header
 // ────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun HeaderSection(onSettingsClick: () -> Unit) {
+private fun HeaderSection(
+    onHistoryClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
     val greeting = when (LocalTime.now().hour) {
         in 5..11 -> "Good morning"
         in 12..16 -> "Good afternoon"
@@ -132,17 +191,17 @@ private fun HeaderSection(onSettingsClick: () -> Unit) {
     }
     val today = LocalDate.now()
     val dateFormatted = today.format(
-        DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())
+        DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())
     )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "$greeting 👋",
+                text = greeting,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -154,28 +213,37 @@ private fun HeaderSection(onSettingsClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        IconButton(onClick = onSettingsClick) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onHistoryClick) {
+                Icon(
+                    imageVector = HistoryClockIcon,
+                    contentDescription = "Brief History",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Section 1 — Hero Card
+// Section 2 — Today's Progress Hero Card
 // ────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun HeroCard(
+private fun TodaysProgressHeroCard(
     uiState: HomeUiState,
     onClick: () -> Unit
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = uiState.progressBarValue,
-        animationSpec = tween(durationMillis = 800),
+        animationSpec = tween(durationMillis = 600),
         label = "hero_progress"
     )
 
@@ -185,65 +253,72 @@ private fun HeroCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = HeroPurple),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(18.dp)
         ) {
-            // Score row
+            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
+                verticalAlignment = Alignment.Top
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Today's Score",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = OnHero.copy(alpha = 0.8f)
+                        text = "Today's Progress",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OnHero
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(20.dp),
                             color = OnHero,
-                            strokeWidth = 3.dp
+                            strokeWidth = 2.dp
                         )
                     } else {
+                        val progressText = if (uiState.totalPrioritiesCount > 0) {
+                            "${uiState.completedPrioritiesCount} / ${uiState.totalPrioritiesCount} priorities completed"
+                        } else {
+                            "You're all caught up for today 🎉"
+                        }
                         Text(
-                            text = "${uiState.currentScore}",
-                            style = MaterialTheme.typography.displaySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = OnHero
+                            text = progressText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = OnHero.copy(alpha = 0.9f)
                         )
                     }
                 }
-                if (!uiState.isLoading && uiState.targetScore > 0) {
+                if (!uiState.isLoading && uiState.totalPrioritiesCount > 0) {
+                    val percentInt = (uiState.progressBarValue * 100).toInt()
                     Text(
-                        text = "/ ${uiState.targetScore}",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = OnHero.copy(alpha = 0.6f),
-                        fontWeight = FontWeight.Medium
+                        text = "$percentInt%",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = OnHero
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            // Progress Bar (Accurate representation: only shown when priorities > 0)
+            if (!uiState.isLoading && uiState.totalPrioritiesCount > 0) {
+                Spacer(modifier = Modifier.height(14.dp))
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = OnHero,
+                    trackColor = OnHero.copy(alpha = 0.25f)
+                )
+            }
 
-            // Progress bar
-            LinearProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = OnHero,
-                trackColor = OnHero.copy(alpha = 0.2f)
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Goal summary + chevron
+            // Supporting Footer Text + Chevron
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -251,39 +326,33 @@ private fun HeroCard(
             ) {
                 Text(
                     text = uiState.todayGoalSummary,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = OnHero.copy(alpha = 0.85f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (uiState.hasBrief) "View brief" else "Start your day",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = OnHero.copy(alpha = 0.7f)
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Open Daily Brief",
-                        tint = OnHero.copy(alpha = 0.7f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "View daily plan",
+                    tint = OnHero.copy(alpha = 0.85f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Section 2 — Today's Focus
+// Section 3 — Today's Focus
 // ────────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun TodaysFocusSection(
-    recommendations: List<RecommendationCard>,
-    onRecommendationClick: (String) -> Unit
+    focusItems: List<TodayFocusItem>,
+    onToggleItem: (TodayFocusItem) -> Unit,
+    onItemClick: (String) -> Unit
 ) {
     Text(
         text = "Today's Focus",
@@ -291,33 +360,193 @@ private fun TodaysFocusSection(
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onBackground
     )
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        recommendations.take(3).forEach { card ->
-            FocusItem(
-                card = card,
-                onClick = {
-                    if (!card.actionRoute.isNullOrEmpty()) {
-                        onRecommendationClick(card.actionRoute)
-                    }
-                }
+    if (focusItems.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
             )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = "No priorities for today.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            focusItems.take(3).forEach { item ->
+                FocusItemRow(
+                    item = item,
+                    onToggle = { onToggleItem(item) },
+                    onClick = {
+                        if (!item.actionRoute.isNullOrEmpty()) {
+                            onItemClick(item.actionRoute)
+                        }
+                    }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun FocusItem(
-    card: RecommendationCard,
+private fun FocusItemRow(
+    item: TodayFocusItem,
+    onToggle: () -> Unit,
     onClick: () -> Unit
 ) {
-    val emoji = when (card.category.lowercase()) {
-        "attendance" -> "🏫"
-        "assignments", "assignment" -> "📚"
-        "coding", "cp", "dsa" -> "💻"
-        "projects", "project" -> "📋"
-        else -> "✅"
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Checkbox with proper tap target
+            Checkbox(
+                checked = item.isCompleted,
+                onCheckedChange = { onToggle() },
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                    color = if (item.isCompleted) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!item.subtitle.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (!item.actionRoute.isNullOrEmpty()) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Open detail",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Section 4 — Coming Up
+// ────────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ComingUpSection(
+    comingUpItems: List<ComingUpItem>,
+    onItemClick: (String) -> Unit,
+    onViewAllClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Coming Up",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        if (comingUpItems.isNotEmpty()) {
+            Text(
+                text = "View all →",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable(onClick = onViewAllClick)
+                    .padding(4.dp)
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (comingUpItems.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = "No upcoming deadlines or scheduled classes.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            comingUpItems.take(3).forEach { item ->
+                ComingUpItemRow(
+                    item = item,
+                    onClick = {
+                        if (!item.actionRoute.isNullOrEmpty()) {
+                            onItemClick(item.actionRoute)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComingUpItemRow(
+    item: ComingUpItem,
+    onClick: () -> Unit
+) {
+    val icon: ImageVector = when (item.category.uppercase()) {
+        "ASSIGNMENT" -> Icons.Default.Edit
+        "CLASS", "ATTENDANCE" -> Icons.Default.DateRange
+        "CONTEST", "CODING", "DSA" -> Icons.Default.Build
+        "PROJECT" -> Icons.AutoMirrored.Filled.List
+        else -> HistoryClockIcon
     }
 
     Card(
@@ -333,120 +562,47 @@ private fun FocusItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = emoji,
-                fontSize = 20.sp
-            )
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = item.category,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = card.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = "Navigate",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// Section 3 — Quick Access
-// ────────────────────────────────────────────────────────────────────────────────
-
-private data class QuickAccessItem(
-    val title: String,
-    val icon: ImageVector,
-    val route: String,
-    val emoji: String
-)
-
-private val quickAccessItems = listOf(
-    QuickAccessItem("Attendance", Icons.Default.DateRange, "weekly", "🏫"),
-    QuickAccessItem("Assignments", Icons.Default.Edit, "assignments/list", "📚"),
-    QuickAccessItem("Coding", Icons.Default.Build, "coding/cp-dashboard", "💻"),
-    QuickAccessItem("Projects", Icons.Default.List, "projects/list", "📋")
-)
-
-@Composable
-private fun QuickAccessSection(onQuickNavClick: (String) -> Unit) {
-    Text(
-        text = "Quick Access",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onBackground
-    )
-    Spacer(modifier = Modifier.height(10.dp))
-
-    // 2×2 grid
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            quickAccessItems.take(2).forEach { item ->
-                QuickAccessCard(
-                    item = item,
-                    onClick = { onQuickNavClick(item.route) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            quickAccessItems.drop(2).forEach { item ->
-                QuickAccessCard(
-                    item = item,
-                    onClick = { onQuickNavClick(item.route) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun QuickAccessCard(
-    item: QuickAccessItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text(
-                text = item.emoji,
-                fontSize = 24.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
             )
         }
     }

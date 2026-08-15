@@ -3,6 +3,7 @@ package com.studentos.feature.intelligence.presentation.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.studentos.core.intelligence.fallback.GuidanceResult
 import com.studentos.core.intelligence.snapshot.IntelligenceSnapshot
 import com.studentos.feature.intelligence.domain.model.DailyBrief
 import com.studentos.feature.intelligence.domain.model.RecommendationCard
@@ -139,9 +140,31 @@ class DailyBriefViewModel @Inject constructor(
 
     private fun parseRecommendations(jsonString: String): List<RecommendationCard> {
         return try {
-            json.decodeFromString(jsonString)
+            json.decodeFromString<List<RecommendationCard>>(jsonString)
         } catch (_: Exception) {
-            emptyList()
+            try {
+                val fallback = json.decodeFromString<GuidanceResult>(jsonString)
+                fallback.recommendations.map { item ->
+                    val actionRoute = when (item.category.uppercase()) {
+                        "ATTENDANCE", "CLASS" -> "weekly"
+                        "ASSIGNMENT_OVERDUE", "ASSIGNMENT_URGENT", "ASSIGNMENT" -> "assignments/list"
+                        "DSA" -> "coding/knowledge-tree"
+                        "PROJECT" -> "projects/list"
+                        "CONTEST" -> "coding/cp"
+                        else -> null
+                    }
+                    RecommendationCard(
+                        id = "${item.category}_${item.priority}_${item.title.hashCode()}",
+                        title = item.title,
+                        description = item.description,
+                        priority = item.priority,
+                        category = item.category,
+                        actionRoute = actionRoute
+                    )
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
         }
     }
 

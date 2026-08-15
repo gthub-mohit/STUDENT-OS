@@ -40,11 +40,12 @@ class LLMProviderFactoryTest {
     }
 
     @Test
-    fun getProvider_returnsMockProvider_whenSettingIsNull() = runTest {
+    fun getProvider_returnsDeepSeekProvider_whenSettingIsNull() = runTest {
         coEvery { settingsDao.get("ai_provider") } returns null
+        coEvery { deepSeekProvider.name } returns "DeepSeekProvider"
 
         val provider = factory.getProvider()
 
-        assertEquals("MockProvider", provider.name)
+        assertEquals("DeepSeekProvider", provider.name)
     }
 }

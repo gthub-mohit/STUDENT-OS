@@ -7,7 +7,7 @@ import androidx.navigation.NavHostController
 /**
  * NavigationItem — metadata for a bottom navigation tab destination.
  *
- * @param route The unique destination route (e.g., "intelligence/daily-brief")
+ * @param route The unique destination route (e.g., "home", "weekly", "assignments/list")
  * @param title Human-readable tab label displayed in [BottomNavBar]
  * @param icon Material [ImageVector] for the tab icon
  */
@@ -21,8 +21,7 @@ data class NavigationItem(
  * ModuleNavGraph — contract that every feature module navigation graph implements.
  *
  * Each feature module registers its navigation routes and optional bottom navigation
- * metadata through this interface. This decouples the root [AppNavHost] from individual
- * feature screen implementations.
+ * metadata through this interface.
  */
 interface ModuleNavGraph {
     val baseRoute: String
@@ -32,9 +31,6 @@ interface ModuleNavGraph {
 
 /**
  * ModuleRegistry — central registry for all feature module navigation graphs in Student OS.
- *
- * Enables dynamic discovery and registration of navigation graphs into [AppNavHost]
- * and bottom navigation items into [BottomNavBar].
  */
 object ModuleRegistry {
 
@@ -61,7 +57,7 @@ object ModuleRegistry {
     }
 
     /**
-     * Clear registered graphs (useful for testing or re-initialization).
+     * Clear registered graphs.
      */
     fun clear() {
         registeredGraphs.clear()

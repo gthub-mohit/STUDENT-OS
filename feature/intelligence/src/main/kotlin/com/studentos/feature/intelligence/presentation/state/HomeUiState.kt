@@ -1,20 +1,24 @@
 package com.studentos.feature.intelligence.presentation.state
 
-import com.studentos.feature.intelligence.domain.model.RecommendationCard
+import com.studentos.feature.intelligence.domain.model.ComingUpItem
+import com.studentos.feature.intelligence.domain.model.TodayFocusItem
 
 /**
- * Lightweight UI state for the Home Screen.
+ * UI state for the redesigned Student OS Home Screen.
  *
- * Combines score data from [DailyScoreUiState] and the top recommendations
- * from [DailyBriefUiState] into a single, home-screen-optimized state.
+ * Single Source of Truth:
+ * [completedPrioritiesCount], [totalPrioritiesCount], and [progressBarValue]
+ * are derived directly from [focusItems].
  */
 data class HomeUiState(
     val isLoading: Boolean = true,
+    val isGenerating: Boolean = false,
     val hasBrief: Boolean = false,
-    val currentScore: Int = 0,
-    val targetScore: Int = 0,
+    val completedPrioritiesCount: Int = 0,
+    val totalPrioritiesCount: Int = 0,
     val progressBarValue: Float = 0f,
-    val todayGoalSummary: String = "Generate your daily brief to get started",
-    val topRecommendations: List<RecommendationCard> = emptyList(),
+    val todayGoalSummary: String = "Tap to see today's plan",
+    val focusItems: List<TodayFocusItem> = emptyList(),
+    val comingUpItems: List<ComingUpItem> = emptyList(),
     val errorMessage: String? = null
 )
