@@ -1,7 +1,9 @@
 package com.studentos.feature.attendance.di
 
+import com.studentos.feature.attendance.data.ocr.GridTimetableParser
 import com.studentos.feature.attendance.data.ocr.OcrProcessor
 import com.studentos.feature.attendance.data.ocr.TimetableFieldMapper
+import com.studentos.feature.attendance.data.ocr.TimetableValidator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,8 +19,23 @@ object OcrModule {
 
     @Provides
     @Singleton
-    fun provideTimetableFieldMapper(): TimetableFieldMapper {
-        return TimetableFieldMapper()
+    fun provideTimetableValidator(): TimetableValidator {
+        return TimetableValidator()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGridTimetableParser(validator: TimetableValidator): GridTimetableParser {
+        return GridTimetableParser(validator)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTimetableFieldMapper(
+        gridParser: GridTimetableParser,
+        validator: TimetableValidator
+    ): TimetableFieldMapper {
+        return TimetableFieldMapper(gridParser, validator)
     }
 
     @Provides

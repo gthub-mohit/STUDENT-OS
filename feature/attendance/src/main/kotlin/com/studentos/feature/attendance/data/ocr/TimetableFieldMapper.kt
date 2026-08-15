@@ -1,15 +1,24 @@
 package com.studentos.feature.attendance.data.ocr
 
 import com.google.mlkit.vision.text.Text
+import com.studentos.feature.attendance.data.ocr.model.OcrRect
+import com.studentos.feature.attendance.data.ocr.model.OcrTextElement
 import com.studentos.feature.attendance.domain.model.OcrResult
 import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import javax.inject.Inject
 
 /**
- * TimetableFieldMapper — Post-processing pass converting raw OCR text blocks or text lines
- * into structured [ParsedTimetableSlot] instances.
+ * TimetableFieldMapper — Unified field mapper converting OCR results into structured [ParsedTimetableSlot] instances.
+ *
+ * Dual-Mode Strategy:
+ * 1. **Grid Mode**: Employs [GridTimetableParser] to parse 2D structured grids using bounding box coordinates.
+ * 2. **Linear Fallback**: Parses free-form line-by-line timetable texts.
+ * 3. **Validation**: Enforces [TimetableValidator] invariants across all modes.
  */
-class TimetableFieldMapper @Inject constructor() {
+class TimetableFieldMapper @Inject constructor(
+    private val gridParser: GridTimetableParser,
+    private val validator: TimetableValidator
+) {
 
     /**
      * Maps ML Kit [Text] vision result into an [OcrResult].
@@ -20,35 +29,51 @@ class TimetableFieldMapper @Inject constructor() {
             return OcrResult(slots = emptyList(), hasWarnings = true, rawText = "")
         }
 
-        val slots = mutableListOf<ParsedTimetableSlot>()
-        var currentDay = 1 // Default Monday
-
+        val elements = mutableListOf<OcrTextElement>()
         for (block in visionText.textBlocks) {
-            val confidence = block.lines.mapNotNull { it.confidence }.average().toFloat().let {
-                if (it.isNaN() || it <= 0.0f) 0.85f else it
-            }
-
             for (line in block.lines) {
-                val textLine = line.text.trim()
-                val detectedDay = parseDayOfWeek(textLine)
-                if (detectedDay != null) {
-                    currentDay = detectedDay
-                    continue
+                val box = line.boundingBox
+                val rect = if (box != null) {
+                    OcrRect(box.left, box.top, box.right, box.bottom)
+                } else {
+                    OcrRect.ZERO
                 }
-
-                val slot = parseLineToSlot(textLine, currentDay, confidence)
-                if (slot != null) {
-                    slots.add(slot)
-                }
+                val confidence = line.confidence ?: 0.90f
+                elements.add(OcrTextElement(text = line.text, rect = rect, confidence = confidence))
             }
         }
 
-        val hasWarnings = slots.any { it.isLowConfidence } || slots.isEmpty()
-        return OcrResult(slots = slots, hasWarnings = hasWarnings, rawText = rawText)
+        return mapFromElements(elements, rawText)
     }
 
     /**
-     * Maps raw text string lines into an [OcrResult] (used for deterministic unit testing).
+     * Maps a structured list of [OcrTextElement] instances into an [OcrResult].
+     */
+    fun mapFromElements(elements: List<OcrTextElement>, rawText: String = ""): OcrResult {
+        if (elements.isEmpty()) {
+            return OcrResult(slots = emptyList(), hasWarnings = true, rawText = rawText)
+        }
+
+        // Mode 1: Try Coordinate-Aware Grid Parser
+        if (gridParser.canParseAsGrid(elements)) {
+            val gridSlots = gridParser.parseGrid(elements)
+            if (gridSlots.isNotEmpty()) {
+                val hasWarnings = gridSlots.any { it.isLowConfidence }
+                return OcrResult(
+                    slots = gridSlots,
+                    hasWarnings = hasWarnings,
+                    rawText = rawText.ifBlank { elements.joinToString("\n") { it.text } }
+                )
+            }
+        }
+
+        // Mode 2: Linear Text Parser Fallback
+        val textToParse = if (rawText.isNotBlank()) rawText else elements.joinToString("\n") { it.text }
+        return mapFromRawText(textToParse)
+    }
+
+    /**
+     * Maps raw text string lines into an [OcrResult] (linear fallback parser).
      */
     fun mapFromRawText(rawText: String, defaultConfidence: Float = 0.85f): OcrResult {
         if (rawText.isBlank()) {
@@ -75,8 +100,9 @@ class TimetableFieldMapper @Inject constructor() {
             }
         }
 
-        val hasWarnings = slots.any { it.isLowConfidence } || slots.isEmpty()
-        return OcrResult(slots = slots, hasWarnings = hasWarnings, rawText = rawText)
+        val validSlots = validator.validateAndFilter(slots)
+        val hasWarnings = validSlots.any { it.isLowConfidence } || validSlots.isEmpty()
+        return OcrResult(slots = validSlots, hasWarnings = hasWarnings, rawText = rawText)
     }
 
     private fun parseDayOfWeek(text: String): Int? {
@@ -94,7 +120,6 @@ class TimetableFieldMapper @Inject constructor() {
     }
 
     private fun parseLineToSlot(line: String, dayOfWeek: Int, confidence: Float): ParsedTimetableSlot? {
-        // Regex matching times like "09:00 - 10:00" or "9:00 AM - 10:00 AM" or "09:00-10:00"
         val timeRegex = Regex("""(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)""")
         val match = timeRegex.find(line) ?: return null
 
@@ -104,11 +129,9 @@ class TimetableFieldMapper @Inject constructor() {
         val startTime = normalizeTime(rawStart)
         val endTime = normalizeTime(rawEnd)
 
-        // Remaining text after removing the time portion is subject and optional location
         val remainingText = line.replace(match.value, "").trim()
         if (remainingText.isBlank()) return null
 
-        // Parse subject and location e.g. "Mathematics - Room 101" or "Physics (Lab 3)"
         val parts = remainingText.split(Regex("""[-–|()]""")).map { it.trim() }.filter { it.isNotBlank() }
         val subjectName = parts.firstOrNull() ?: remainingText
         val location = if (parts.size > 1) parts[1] else null

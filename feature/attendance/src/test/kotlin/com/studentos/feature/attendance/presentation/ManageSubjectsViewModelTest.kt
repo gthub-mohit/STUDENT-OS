@@ -67,6 +67,8 @@ class ManageSubjectsViewModelTest {
         override fun getSlotsForSubject(subjectId: Long): Flow<List<TimetableSlotEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
         override fun getSlotsForDay(dayOfWeek: Int, parity: String?): Flow<List<TimetableSlotEntity>> = error("Not needed")
         override suspend fun getActiveSlotsOnDate(epochMs: Long, parity: String?): List<TimetableSlotEntity> = error("Not needed")
+        override suspend fun getAllSlotsOnce(): List<TimetableSlotEntity> = emptyList()
+        override suspend fun findMatchingSlot(subjectId: Long, dayOfWeek: Int, startTime: String, parity: String?): TimetableSlotEntity? = null
     }
 
     @Test

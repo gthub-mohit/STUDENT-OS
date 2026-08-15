@@ -85,4 +85,33 @@ interface ClassEventDao {
         ORDER BY s.name ASC
     """)
     fun getAllAttendanceSummaries(): Flow<List<SubjectAttendanceSummary>>
+
+    // ── Timetable Replacement Support ──────────────────────────────────
+
+    /**
+     * Deletes only UNMARKED (auto-generated future) class events that reference
+     * any of the given timetable slot IDs. Marked attendance records survive.
+     */
+    @Query("DELETE FROM class_events WHERE timetable_slot_id IN (:slotIds) AND status = 'UNMARKED'")
+    suspend fun deleteUnmarkedBySlotIds(slotIds: List<Long>)
+
+    /**
+     * Nullifies timetable_slot_id and linked_slot_id foreign key references on
+     * class_events that have been marked (PRESENT/ABSENT/CANCELLED/HOLIDAY/EXTRA_CLASS).
+     * This safely detaches them from the old timetable slots before those slots are deleted.
+     */
+    @Query("UPDATE class_events SET timetable_slot_id = NULL, linked_slot_id = NULL, updated_at = :updatedAt WHERE timetable_slot_id IN (:slotIds) AND status != 'UNMARKED'")
+    suspend fun nullifySlotReferences(slotIds: List<Long>, updatedAt: Long)
+
+    /**
+     * Returns all class event IDs that reference the given timetable slot IDs.
+     */
+    @Query("SELECT id FROM class_events WHERE timetable_slot_id IN (:slotIds)")
+    suspend fun getEventIdsBySlotIds(slotIds: List<Long>): List<Long>
+
+    /**
+     * Looks up an existing class event for a specific subject at an exact scheduled epoch timestamp.
+     */
+    @Query("SELECT * FROM class_events WHERE subject_id = :subjectId AND scheduled_at = :scheduledAt LIMIT 1")
+    suspend fun getEventBySubjectAndSchedule(subjectId: Long, scheduledAt: Long): ClassEventEntity?
 }

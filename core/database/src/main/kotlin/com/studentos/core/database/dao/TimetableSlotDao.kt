@@ -40,4 +40,10 @@ interface TimetableSlotDao {
 
     @Query("SELECT * FROM timetable_slots WHERE valid_from <= :epochMs AND (valid_until IS NULL OR valid_until >= :epochMs) AND (week_parity IS NULL OR week_parity = :parity)")
     suspend fun getActiveSlotsOnDate(epochMs: Long, parity: String?): List<TimetableSlotEntity>
+
+    @Query("SELECT * FROM timetable_slots")
+    suspend fun getAllSlotsOnce(): List<TimetableSlotEntity>
+
+    @Query("SELECT * FROM timetable_slots WHERE subject_id = :subjectId AND day_of_week = :dayOfWeek AND start_time = :startTime AND (week_parity IS NULL OR week_parity = :parity) LIMIT 1")
+    suspend fun findMatchingSlot(subjectId: Long, dayOfWeek: Int, startTime: String, parity: String?): TimetableSlotEntity?
 }

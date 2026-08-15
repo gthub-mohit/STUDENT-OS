@@ -1,6 +1,10 @@
 package com.studentos.feature.attendance.ocr
 
+import com.studentos.feature.attendance.data.ocr.GridTimetableParser
 import com.studentos.feature.attendance.data.ocr.TimetableFieldMapper
+import com.studentos.feature.attendance.data.ocr.TimetableValidator
+import com.studentos.feature.attendance.data.ocr.model.OcrRect
+import com.studentos.feature.attendance.data.ocr.model.OcrTextElement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -9,7 +13,9 @@ import org.junit.Test
 
 class TimetableFieldMapperTest {
 
-    private val mapper = TimetableFieldMapper()
+    private val validator = TimetableValidator()
+    private val gridParser = GridTimetableParser(validator)
+    private val mapper = TimetableFieldMapper(gridParser, validator)
 
     @Test
     fun mapFromRawText_emptyText_returnsEmptyListWithWarnings() {
@@ -90,5 +96,35 @@ class TimetableFieldMapperTest {
         assertEquals(1, result.slots.size)
         assertTrue(result.slots[0].isLowConfidence)
         assertTrue(result.hasWarnings)
+    }
+
+    @Test
+    fun mapFromElements_gridElements_invokesGridParser() {
+        val elements = listOf(
+            OcrTextElement("1", OcrRect(100, 20, 150, 40)),
+            OcrTextElement("09:00 - 10:00", OcrRect(100, 45, 200, 75)),
+            OcrTextElement("Monday", OcrRect(10, 100, 80, 150)),
+            OcrTextElement("Tuesday", OcrRect(10, 200, 80, 250)),
+            OcrTextElement("MATH101\nRoom 1", OcrRect(105, 105, 195, 185))
+        )
+
+        val result = mapper.mapFromElements(elements)
+        assertEquals(1, result.slots.size)
+        assertEquals("MATH101", result.slots[0].subjectName)
+        assertEquals("09:00", result.slots[0].startTime)
+        assertEquals("10:00", result.slots[0].endTime)
+    }
+
+    @Test
+    fun validator_rejectsInvalidTimesAndSubjects() {
+        // "13:00" as subject or invalid minutes
+        val invalidSlots = mapper.mapFromRawText(
+            """
+                Monday
+                13:00 - 13:55 13:00
+            """.trimIndent()
+        )
+        // 13:00 should not be accepted as a subject
+        assertTrue(invalidSlots.slots.isEmpty())
     }
 }

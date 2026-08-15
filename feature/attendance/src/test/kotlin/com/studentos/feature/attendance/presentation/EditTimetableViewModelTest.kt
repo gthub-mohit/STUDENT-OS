@@ -66,6 +66,9 @@ class EditTimetableViewModelTest {
         override fun getSlotsForSubject(subjectId: Long): Flow<List<TimetableSlotEntity>> = error("Not needed")
         override fun getSlotsForDay(dayOfWeek: Int, parity: String?): Flow<List<TimetableSlotEntity>> = error("Not needed")
         override suspend fun getActiveSlotsOnDate(epochMs: Long, parity: String?): List<TimetableSlotEntity> = error("Not needed")
+        override suspend fun getAllSlotsOnce(): List<TimetableSlotEntity> = slotsList.toList()
+        override suspend fun findMatchingSlot(subjectId: Long, dayOfWeek: Int, startTime: String, parity: String?): TimetableSlotEntity? =
+            slotsList.firstOrNull { it.subjectId == subjectId && it.dayOfWeek == dayOfWeek && it.startTime == startTime }
     }
 
     private class FakeSubjectRepository : SubjectRepository {

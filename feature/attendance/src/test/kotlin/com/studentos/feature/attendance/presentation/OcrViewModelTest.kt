@@ -2,8 +2,10 @@ package com.studentos.feature.attendance.presentation
 
 import com.studentos.core.events.AppError
 import com.studentos.core.events.AppResult
+import com.studentos.feature.attendance.data.ocr.GridTimetableParser
 import com.studentos.feature.attendance.data.ocr.OcrProcessor
 import com.studentos.feature.attendance.data.ocr.TimetableFieldMapper
+import com.studentos.feature.attendance.data.ocr.TimetableValidator
 import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import com.studentos.feature.attendance.domain.repository.TimetableRepository
 import com.studentos.feature.attendance.domain.usecase.ImportTimetableUseCase
@@ -17,6 +19,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OcrViewModelTest {
+
+    private fun createMapper(): TimetableFieldMapper {
+        val validator = TimetableValidator()
+        val gridParser = GridTimetableParser(validator)
+        return TimetableFieldMapper(gridParser, validator)
+    }
 
     private class FakeTimetableRepository : TimetableRepository {
         var shouldFailImportWithoutReplace = false
@@ -39,7 +47,7 @@ class OcrViewModelTest {
 
     @Test
     fun initialState_isIdle() {
-        val mapper = TimetableFieldMapper()
+        val mapper = createMapper()
         val processor = OcrProcessor(mapper)
         val repo = FakeTimetableRepository()
         val useCase = ImportTimetableUseCase(repo)
@@ -50,7 +58,7 @@ class OcrViewModelTest {
 
     @Test
     fun addSlot_addsSlotToContentState() = runBlocking {
-        val mapper = TimetableFieldMapper()
+        val mapper = createMapper()
         val processor = OcrProcessor(mapper)
         val repo = FakeTimetableRepository()
         val useCase = ImportTimetableUseCase(repo)
@@ -81,7 +89,7 @@ class OcrViewModelTest {
 
     @Test
     fun updateSlot_updatesSlotAtIndex() = runBlocking {
-        val mapper = TimetableFieldMapper()
+        val mapper = createMapper()
         val processor = OcrProcessor(mapper)
         val repo = FakeTimetableRepository()
         val useCase = ImportTimetableUseCase(repo)
@@ -104,7 +112,7 @@ class OcrViewModelTest {
 
     @Test
     fun removeSlot_removesSlotAtIndex() = runBlocking {
-        val mapper = TimetableFieldMapper()
+        val mapper = createMapper()
         val processor = OcrProcessor(mapper)
         val repo = FakeTimetableRepository()
         val useCase = ImportTimetableUseCase(repo)
@@ -127,7 +135,7 @@ class OcrViewModelTest {
 
     @Test
     fun confirmImport_existingTimetable_showsReplaceDialog() = runBlocking {
-        val mapper = TimetableFieldMapper()
+        val mapper = createMapper()
         val processor = OcrProcessor(mapper)
         val repo = FakeTimetableRepository().apply { shouldFailImportWithoutReplace = true }
         val useCase = ImportTimetableUseCase(repo)
@@ -154,7 +162,7 @@ class OcrViewModelTest {
 
     @Test
     fun confirmImport_success_transitionsToImportSuccess() = runBlocking {
-        val mapper = TimetableFieldMapper()
+        val mapper = createMapper()
         val processor = OcrProcessor(mapper)
         val repo = FakeTimetableRepository()
         val useCase = ImportTimetableUseCase(repo)

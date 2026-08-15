@@ -1,6 +1,7 @@
 package com.studentos.feature.attendance.data.ocr
 
 import android.graphics.Bitmap
+import android.util.Log
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -28,8 +29,12 @@ class OcrProcessor @Inject constructor(
         return try {
             val inputImage = InputImage.fromBitmap(bitmap, 0)
             val visionText = processImage(inputImage)
-            mapper.map(visionText)
+            logDebug("ML Kit extracted ${visionText.textBlocks.size} text blocks")
+            val result = mapper.map(visionText)
+            logDebug("Mapped to ${result.slots.size} slots with hasWarnings=${result.hasWarnings}")
+            result
         } catch (e: Exception) {
+            logDebug("OCR Processing Error: ${e.message}")
             OcrResult(
                 slots = emptyList(),
                 hasWarnings = true,
@@ -50,5 +55,11 @@ class OcrProcessor @Inject constructor(
                     continuation.resumeWith(Result.failure(exception))
                 }
             }
+    }
+
+    private fun logDebug(message: String) {
+        try {
+            Log.d("TimetableOcr", message)
+        } catch (_: Exception) {}
     }
 }
