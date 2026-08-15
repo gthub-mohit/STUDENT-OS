@@ -100,4 +100,35 @@ class BunkCalculatorTest {
         )
         assertEquals(63.636, predictedBunkedPct, 0.01)
     }
+
+    @Test
+    fun subjectSpecific_canSkipAndMustAttendCalculations() {
+        // ME201: 14 attended out of 17 held (82.35%), threshold 75% -> can skip floor((100*14 - 75*17)/75) = floor(125/75) = 1
+        val me201CanSkip = BunkCalculator.canSkip(
+            present = 14,
+            absent = 3,
+            cancelled = 2,
+            holiday = 0,
+            extraPresent = 0,
+            threshold = 75
+        )
+        assertEquals(1, me201CanSkip)
+
+        // CS203: 11 attended out of 16 held (68.75%), threshold 75% -> must attend ceil((75*16 - 100*11)/(100-75)) = ceil(100/25) = 4
+        val cs203MustAttend = BunkCalculator.mustAttend(
+            present = 11,
+            absent = 5,
+            cancelled = 1,
+            holiday = 0,
+            extraPresent = 0,
+            threshold = 75
+        )
+        assertEquals(4, cs203MustAttend)
+
+        // VAC202: 0 attended out of 0 held
+        val vacCanSkip = BunkCalculator.canSkip(0, 0, 0, 0, 0, 75)
+        val vacMustAttend = BunkCalculator.mustAttend(0, 0, 0, 0, 0, 75)
+        assertEquals(0, vacCanSkip)
+        assertEquals(0, vacMustAttend)
+    }
 }

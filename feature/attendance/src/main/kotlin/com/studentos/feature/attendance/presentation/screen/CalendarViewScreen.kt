@@ -104,17 +104,29 @@ fun CalendarViewScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         if (state.monthEvents.isEmpty()) {
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .fillMaxWidth(),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "No attendance data for this month.",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "No Classes in This Month",
+                                    style = MaterialTheme.typography.titleMedium
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No class events found for this month. You can view weekly classes or check upcoming weeks.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                                Spacer(modifier = Modifier.height(20.dp))
+                                androidx.compose.material3.Button(onClick = onNavigateBack) {
+                                    Text("Go to Weekly View")
+                                }
                             }
                         } else {
                             LazyColumn(

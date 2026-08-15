@@ -78,4 +78,82 @@ class AttendanceAnalyticsViewModelTest {
             assertEquals(80.0, success.overallPercentage, 0.01)
         }
     }
+
+    @Test
+    fun multipleSubjects_independentAttendanceAndCalculations() {
+        runBlocking {
+            val multiSubjectRepo = object : ClassEventRepository {
+                override fun getEventsForSubject(subjectId: Long): Flow<List<ClassEventEntity>> = error("Not needed")
+                override fun getEventsForDay(startEpoch: Long, endEpoch: Long): Flow<List<ClassEventEntity>> = error("Not needed")
+                override fun getEventsForWeek(startEpoch: Long, endEpoch: Long): Flow<List<ClassEventEntity>> = error("Not needed")
+
+                override fun getAllAttendanceSummaries(): Flow<List<SubjectAttendanceSummary>> {
+                    return flowOf(
+                        listOf(
+                            SubjectAttendanceSummary(
+                                subjectId = 101,
+                                subjectName = "ME201",
+                                presentCount = 14,
+                                absentCount = 3,
+                                cancelledCount = 2,
+                                holidayCount = 0,
+                                extraPresentCount = 0,
+                                totalHeldCount = 17,
+                                percentage = 82.35
+                            ),
+                            SubjectAttendanceSummary(
+                                subjectId = 102,
+                                subjectName = "CS203",
+                                presentCount = 11,
+                                absentCount = 5,
+                                cancelledCount = 1,
+                                holidayCount = 0,
+                                extraPresentCount = 0,
+                                totalHeldCount = 16,
+                                percentage = 68.75
+                            ),
+                            SubjectAttendanceSummary(
+                                subjectId = 103,
+                                subjectName = "VAC202",
+                                presentCount = 0,
+                                absentCount = 0,
+                                cancelledCount = 0,
+                                holidayCount = 0,
+                                extraPresentCount = 0,
+                                totalHeldCount = 0,
+                                percentage = 0.0
+                            )
+                        )
+                    )
+                }
+
+                override suspend fun updateStatus(eventId: Long, status: String): AppResult<Unit> = error("Not needed")
+                override suspend fun addExtraClass(subjectId: Long, scheduledAt: Long, endAt: Long, linkedSlotId: Long?): AppResult<Long> = error("Not needed")
+            }
+
+            val viewModel = AttendanceAnalyticsViewModel(
+                classEventRepository = multiSubjectRepo,
+                settingsDao = FakeSettingsDao()
+            )
+
+            val state = viewModel.uiState.first { it is AnalyticsUiState.Success } as AnalyticsUiState.Success
+            assertEquals(3, state.summaries.size)
+
+            val me201 = state.summaries[0]
+            assertEquals("ME201", me201.subjectName)
+            assertEquals(14, me201.presentCount)
+            assertEquals(17, me201.totalHeldCount)
+            assertEquals(82.35, me201.percentage, 0.01)
+
+            val cs203 = state.summaries[1]
+            assertEquals("CS203", cs203.subjectName)
+            assertEquals(11, cs203.presentCount)
+            assertEquals(16, cs203.totalHeldCount)
+            assertEquals(68.75, cs203.percentage, 0.01)
+
+            val vac202 = state.summaries[2]
+            assertEquals("VAC202", vac202.subjectName)
+            assertEquals(0, vac202.totalHeldCount)
+        }
+    }
 }

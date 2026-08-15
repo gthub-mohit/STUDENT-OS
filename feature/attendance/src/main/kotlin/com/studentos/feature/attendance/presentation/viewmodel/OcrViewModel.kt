@@ -59,7 +59,10 @@ class OcrViewModel @Inject constructor(
         val currentState = _uiState.value as? OcrUiState.Content ?: return
         val updatedList = currentState.slots.toMutableList().apply {
             if (index in indices) {
-                this[index] = updatedSlot
+                this[index] = updatedSlot.copy(
+                    confidence = 1.0f,
+                    isLowConfidence = false
+                )
             }
         }
         val hasWarnings = updatedList.any { it.isLowConfidence }

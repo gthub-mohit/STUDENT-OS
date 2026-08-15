@@ -82,6 +82,7 @@ class WeeklyViewModel @Inject constructor(
                         }
                     }
 
+                    val totalHeld = totalPresent + totalAbsent + totalExtraPresent
                     val overallPct = AttendanceCalculator.calculatePercentage(
                         present = totalPresent,
                         absent = totalAbsent,
@@ -98,7 +99,8 @@ class WeeklyViewModel @Inject constructor(
                         subjects = activeSubjects,
                         timetableSlots = slots,
                         overallAttendancePercentage = overallPct,
-                        isBelowThreshold = overallPct < threshold,
+                        totalHeldCount = totalHeld,
+                        isBelowThreshold = overallPct < threshold && totalHeld > 0,
                         threshold = threshold
                     )
                 }
@@ -143,7 +145,7 @@ class WeeklyViewModel @Inject constructor(
 
     private fun currentDayOfWeek(): Int {
         val cal = Calendar.getInstance()
-        return when (cal.get(Calendar.DAY_OF_WEEK)) {
+        val dow = when (cal.get(Calendar.DAY_OF_WEEK)) {
             Calendar.MONDAY -> 1
             Calendar.TUESDAY -> 2
             Calendar.WEDNESDAY -> 3
@@ -153,6 +155,7 @@ class WeeklyViewModel @Inject constructor(
             Calendar.SUNDAY -> 7
             else -> 1
         }
+        return if (dow in 1..5) dow else 1
     }
 
     private fun weekBounds(weekOffset: Int): Pair<Long, Long> {

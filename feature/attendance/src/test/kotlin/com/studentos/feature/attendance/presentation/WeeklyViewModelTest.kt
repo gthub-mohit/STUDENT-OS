@@ -175,4 +175,28 @@ class WeeklyViewModelTest {
             assertEquals(0, currentWeekState.weekOffset)
         }
     }
+
+    @Test
+    fun init_withMarkedEvents_calculatesTotalHeldCount() = runBlocking {
+        val fakeRepo = FakeClassEventRepository()
+        val fakeSubjectRepo = FakeSubjectRepository()
+        val fakeTimetableRepo = FakeTimetableRepository()
+        val fakeSettingsDao = FakeSettingsDao()
+        val updateUseCase = UpdateClassEventStatusUseCase(fakeRepo)
+        val addUseCase = AddExtraClassUseCase(fakeRepo)
+
+        val viewModel = WeeklyViewModel(
+            classEventRepository = fakeRepo,
+            subjectRepository = fakeSubjectRepo,
+            timetableRepository = fakeTimetableRepo,
+            settingsDao = fakeSettingsDao,
+            updateClassEventStatusUseCase = updateUseCase,
+            addExtraClassUseCase = addUseCase
+        )
+
+        val state = viewModel.uiState.first { it is WeeklyUiState.Success } as WeeklyUiState.Success
+        assertEquals(1, state.totalHeldCount)
+        assertEquals(100.0, state.overallAttendancePercentage, 0.01)
+        assertEquals(false, state.isBelowThreshold)
+    }
 }

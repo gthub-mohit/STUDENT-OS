@@ -17,6 +17,7 @@ sealed interface WeeklyUiState {
         val subjects: List<SubjectEntity>,
         val timetableSlots: List<TimetableSlotEntity> = emptyList(),
         val overallAttendancePercentage: Double,
+        val totalHeldCount: Int = 0,
         val isBelowThreshold: Boolean,
         val threshold: Int = 75,
         val selectedSubjectId: Long? = null

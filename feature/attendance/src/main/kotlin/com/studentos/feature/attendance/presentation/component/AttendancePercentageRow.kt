@@ -1,8 +1,11 @@
 package com.studentos.feature.attendance.presentation.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,17 +21,19 @@ import java.util.Locale
 @Composable
 fun AttendancePercentageRow(
     percentage: Double,
+    totalHeld: Int = 1,
     isBelowThreshold: Boolean,
     threshold: Int,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = if (isBelowThreshold) {
+    val hasData = totalHeld > 0
+    val containerColor = if (hasData && isBelowThreshold) {
         Color(0xFFF8D7DA) // Red tint highlight
     } else {
         MaterialTheme.colorScheme.primaryContainer
     }
 
-    val textColor = if (isBelowThreshold) {
+    val textColor = if (hasData && isBelowThreshold) {
         Color(0xFF721C24) // Red text
     } else {
         MaterialTheme.colorScheme.onPrimaryContainer
@@ -41,19 +46,36 @@ fun AttendancePercentageRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Overall Attendance",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = textColor.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                if (hasData) {
+                    Text(
+                        text = String.format(Locale.getDefault(), "%.1f%%", percentage),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = textColor
+                    )
+                } else {
+                    Text(
+                        text = "No attendance recorded yet",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = textColor
+                    )
+                }
+            }
+
             Text(
-                text = "Overall Attendance",
-                style = MaterialTheme.typography.titleMedium,
-                color = textColor
-            )
-            Text(
-                text = String.format(Locale.getDefault(), "%.1f%% (Target: %d%%)", percentage, threshold),
-                style = MaterialTheme.typography.titleLarge,
-                color = textColor
+                text = "Target: $threshold%",
+                style = MaterialTheme.typography.bodyMedium,
+                color = textColor.copy(alpha = 0.9f)
             )
         }
     }

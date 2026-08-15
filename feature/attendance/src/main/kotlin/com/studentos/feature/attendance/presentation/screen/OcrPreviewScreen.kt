@@ -338,16 +338,27 @@ private fun OcrContent(
     }
 }
 
+private val SubtleWarningBg = Color(0xFFFFF9E6)
+private val SubtleWarningText = Color(0xFF9A7B0C)
+
 @Composable
 private fun SlotRowItem(
     slot: ParsedTimetableSlot,
     onSlotChange: (ParsedTimetableSlot) -> Unit,
     onDelete: () -> Unit
 ) {
-    val backgroundColor = if (slot.isLowConfidence) AmberHighlight else MaterialTheme.colorScheme.surfaceVariant
+    val isCriticalLow = slot.confidence < 0.70f
+    val isModerateLow = slot.confidence in 0.70f..<0.80f
+
+    val cardBorder = when {
+        isCriticalLow -> androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFC107))
+        isModerateLow -> androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFE082))
+        else -> null
+    }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = cardBorder,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -356,16 +367,45 @@ private fun SlotRowItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = getDayName(slot.dayOfWeek),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = getDayName(slot.dayOfWeek),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    if (isCriticalLow) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                            color = AmberHighlight
+                        ) {
+                            Text(
+                                text = "Review Needed",
+                                color = AmberText,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    } else if (isModerateLow) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                            color = SubtleWarningBg
+                        ) {
+                            Text(
+                                text = "Check Accuracy",
+                                color = SubtleWarningText,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 TextButton(onClick = onDelete) {
                     Text("Remove", color = MaterialTheme.colorScheme.error)
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             OutlinedTextField(
                 value = slot.subjectName,
@@ -374,7 +414,7 @@ private fun SlotRowItem(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
@@ -392,7 +432,7 @@ private fun SlotRowItem(
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             OutlinedTextField(
                 value = slot.location ?: "",
