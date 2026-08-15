@@ -46,4 +46,10 @@ interface TimetableSlotDao {
 
     @Query("SELECT * FROM timetable_slots WHERE subject_id = :subjectId AND day_of_week = :dayOfWeek AND start_time = :startTime AND (week_parity IS NULL OR week_parity = :parity) LIMIT 1")
     suspend fun findMatchingSlot(subjectId: Long, dayOfWeek: Int, startTime: String, parity: String?): TimetableSlotEntity?
+
+    @Query("SELECT id FROM timetable_slots WHERE subject_id = :subjectId")
+    suspend fun getSlotIdsForSubject(subjectId: Long): List<Long>
+
+    @Query("DELETE FROM timetable_slots WHERE subject_id = :subjectId")
+    suspend fun deleteBySubjectId(subjectId: Long)
 }

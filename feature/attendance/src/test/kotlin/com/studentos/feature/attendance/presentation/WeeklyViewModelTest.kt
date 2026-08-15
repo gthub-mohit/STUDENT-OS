@@ -51,6 +51,7 @@ class WeeklyViewModelTest {
         override suspend fun addSubject(name: String): AppResult<Long> = error("Not needed")
         override suspend fun renameSubject(id: Long, newName: String): AppResult<Unit> = error("Not needed")
         override suspend fun archiveSubject(id: Long): AppResult<Unit> = error("Not needed")
+        override suspend fun cleanupInvalidOcrSubjects(targetNames: List<String>): AppResult<Unit> = AppResult.Success(Unit)
     }
 
     private class FakeClassEventRepository : ClassEventRepository {

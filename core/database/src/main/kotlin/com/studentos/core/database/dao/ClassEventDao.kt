@@ -114,4 +114,16 @@ interface ClassEventDao {
      */
     @Query("SELECT * FROM class_events WHERE subject_id = :subjectId AND scheduled_at = :scheduledAt LIMIT 1")
     suspend fun getEventBySubjectAndSchedule(subjectId: Long, scheduledAt: Long): ClassEventEntity?
+
+    /**
+     * Deletes only UNMARKED auto-generated class events belonging to the given subject ID.
+     */
+    @Query("DELETE FROM class_events WHERE subject_id = :subjectId AND status = 'UNMARKED'")
+    suspend fun deleteUnmarkedBySubjectId(subjectId: Long)
+
+    /**
+     * Returns total count of all class events referencing the given subject ID.
+     */
+    @Query("SELECT COUNT(*) FROM class_events WHERE subject_id = :subjectId")
+    suspend fun countEventsForSubject(subjectId: Long): Int
 }

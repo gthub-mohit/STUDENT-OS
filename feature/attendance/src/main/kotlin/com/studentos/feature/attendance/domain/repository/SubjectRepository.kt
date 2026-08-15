@@ -14,4 +14,7 @@ interface SubjectRepository {
     suspend fun addSubject(name: String): AppResult<Long>
     suspend fun renameSubject(id: Long, newName: String): AppResult<Unit>
     suspend fun archiveSubject(id: Long): AppResult<Unit>
+    suspend fun cleanupInvalidOcrSubjects(
+        targetNames: List<String> = listOf("C003", "Enire cass", "Entre")
+    ): AppResult<Unit>
 }

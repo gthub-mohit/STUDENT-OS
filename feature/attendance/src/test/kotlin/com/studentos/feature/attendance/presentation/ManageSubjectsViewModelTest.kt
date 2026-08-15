@@ -55,6 +55,8 @@ class ManageSubjectsViewModelTest {
             }
             return AppResult.Success(Unit)
         }
+
+        override suspend fun cleanupInvalidOcrSubjects(targetNames: List<String>): AppResult<Unit> = AppResult.Success(Unit)
     }
 
     private class FakeTimetableSlotDao : TimetableSlotDao {
@@ -69,6 +71,8 @@ class ManageSubjectsViewModelTest {
         override suspend fun getActiveSlotsOnDate(epochMs: Long, parity: String?): List<TimetableSlotEntity> = error("Not needed")
         override suspend fun getAllSlotsOnce(): List<TimetableSlotEntity> = emptyList()
         override suspend fun findMatchingSlot(subjectId: Long, dayOfWeek: Int, startTime: String, parity: String?): TimetableSlotEntity? = null
+        override suspend fun getSlotIdsForSubject(subjectId: Long): List<Long> = emptyList()
+        override suspend fun deleteBySubjectId(subjectId: Long) {}
     }
 
     @Test

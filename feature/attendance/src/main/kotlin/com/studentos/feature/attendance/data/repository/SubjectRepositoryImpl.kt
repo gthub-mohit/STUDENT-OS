@@ -1,6 +1,10 @@
 package com.studentos.feature.attendance.data.repository
 
+import androidx.room.withTransaction
+import com.studentos.core.database.AppDatabase
+import com.studentos.core.database.dao.ClassEventDao
 import com.studentos.core.database.dao.SubjectDao
+import com.studentos.core.database.dao.TimetableSlotDao
 import com.studentos.core.database.entity.SubjectEntity
 import com.studentos.core.events.AppError
 import com.studentos.core.events.AppResult
@@ -12,7 +16,10 @@ import javax.inject.Inject
  * SubjectRepositoryImpl — Data repository implementing [SubjectRepository].
  */
 class SubjectRepositoryImpl @Inject constructor(
-    private val subjectDao: SubjectDao
+    private val subjectDao: SubjectDao,
+    private val timetableSlotDao: TimetableSlotDao? = null,
+    private val classEventDao: ClassEventDao? = null,
+    private val database: AppDatabase? = null
 ) : SubjectRepository {
 
     override fun getActiveSubjects(): Flow<List<SubjectEntity>> {
@@ -65,6 +72,41 @@ class SubjectRepositoryImpl @Inject constructor(
             AppResult.Success(Unit)
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to archive subject"))
+        }
+    }
+
+    override suspend fun cleanupInvalidOcrSubjects(targetNames: List<String>): AppResult<Unit> {
+        return try {
+            val executeCleanup = suspend {
+                val invalidSubjects = subjectDao.getByNames(targetNames)
+                val now = System.currentTimeMillis()
+                for (subject in invalidSubjects) {
+                    val slotIds = timetableSlotDao?.getSlotIdsForSubject(subject.id) ?: emptyList()
+                    if (slotIds.isNotEmpty()) {
+                        classEventDao?.deleteUnmarkedBySlotIds(slotIds)
+                        classEventDao?.nullifySlotReferences(slotIds, now)
+                        timetableSlotDao?.deleteBySubjectId(subject.id)
+                    }
+                    classEventDao?.deleteUnmarkedBySubjectId(subject.id)
+                    val remainingEvents = classEventDao?.countEventsForSubject(subject.id) ?: 0
+                    if (remainingEvents == 0) {
+                        subjectDao.deleteById(subject.id)
+                    } else {
+                        subjectDao.archive(subject.id, now)
+                    }
+                }
+            }
+
+            if (database != null) {
+                database.withTransaction {
+                    executeCleanup()
+                }
+            } else {
+                executeCleanup()
+            }
+            AppResult.Success(Unit)
+        } catch (e: Exception) {
+            AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to cleanup invalid subjects"))
         }
     }
 }

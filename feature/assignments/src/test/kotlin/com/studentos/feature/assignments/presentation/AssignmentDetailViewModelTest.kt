@@ -52,6 +52,8 @@ class AssignmentDetailViewModelTest {
         )
         override fun getSubjectById(id: Long): Flow<SubjectEntity?> = error("Not needed")
         override suspend fun getByName(name: String): SubjectEntity? = error("Not needed")
+        override suspend fun getByNames(names: List<String>): List<SubjectEntity> = emptyList()
+        override suspend fun deleteById(id: Long) = error("Not needed")
         override suspend fun getSubjectCount(): Int = 1
     }
 

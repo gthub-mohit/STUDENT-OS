@@ -69,6 +69,11 @@ class EditTimetableViewModelTest {
         override suspend fun getAllSlotsOnce(): List<TimetableSlotEntity> = slotsList.toList()
         override suspend fun findMatchingSlot(subjectId: Long, dayOfWeek: Int, startTime: String, parity: String?): TimetableSlotEntity? =
             slotsList.firstOrNull { it.subjectId == subjectId && it.dayOfWeek == dayOfWeek && it.startTime == startTime }
+        override suspend fun getSlotIdsForSubject(subjectId: Long): List<Long> = slotsList.filter { it.subjectId == subjectId }.map { it.id }
+        override suspend fun deleteBySubjectId(subjectId: Long) {
+            slotsList.removeAll { it.subjectId == subjectId }
+            slotsFlow.value = slotsList.toList()
+        }
     }
 
     private class FakeSubjectRepository : SubjectRepository {
@@ -80,6 +85,7 @@ class EditTimetableViewModelTest {
         override suspend fun addSubject(name: String): AppResult<Long> = error("Not needed")
         override suspend fun renameSubject(id: Long, newName: String): AppResult<Unit> = error("Not needed")
         override suspend fun archiveSubject(id: Long): AppResult<Unit> = error("Not needed")
+        override suspend fun cleanupInvalidOcrSubjects(targetNames: List<String>): AppResult<Unit> = AppResult.Success(Unit)
     }
 
     @Test

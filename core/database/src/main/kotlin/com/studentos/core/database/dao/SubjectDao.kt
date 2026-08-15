@@ -43,4 +43,10 @@ interface SubjectDao {
 
     @Query("SELECT COUNT(*) FROM subjects WHERE archived_at IS NULL")
     suspend fun getSubjectCount(): Int
+
+    @Query("SELECT * FROM subjects WHERE name IN (:names)")
+    suspend fun getByNames(names: List<String>): List<SubjectEntity>
+
+    @Query("DELETE FROM subjects WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

@@ -59,6 +59,29 @@ object DatabaseModule {
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
                     db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
+                    
+                    // Safely clean up known OCR garbage subjects and their unmarked events / slots
+                    db.execSQL("""
+                        DELETE FROM class_events 
+                        WHERE status = 'UNMARKED' AND (
+                            subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre'))
+                            OR timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre')))
+                        )
+                    """.trimIndent())
+                    db.execSQL("""
+                        UPDATE class_events 
+                        SET timetable_slot_id = NULL, linked_slot_id = NULL, updated_at = strftime('%s', 'now') * 1000 
+                        WHERE timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre')))
+                    """.trimIndent())
+                    db.execSQL("""
+                        DELETE FROM timetable_slots 
+                        WHERE subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre'))
+                    """.trimIndent())
+                    db.execSQL("""
+                        DELETE FROM subjects 
+                        WHERE name IN ('C003', 'Enire cass', 'Entre') 
+                        AND id NOT IN (SELECT subject_id FROM class_events)
+                    """.trimIndent())
                 }
             })
             .build()
