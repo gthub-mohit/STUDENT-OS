@@ -188,7 +188,7 @@ fun WeeklyViewScreen(
                                     .weight(1f)
                                     .fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(bottom = 12.dp)
+                                contentPadding = PaddingValues(bottom = 80.dp)
                             ) {
                                 items(state.dayEvents) { event ->
                                     val subjectName = state.subjects.find { it.id == event.subjectId }?.name ?: "Subject"
@@ -202,33 +202,6 @@ fun WeeklyViewScreen(
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        var totalP = 0
-                        var totalA = 0
-                        var totalC = 0
-                        var totalH = 0
-                        var totalEP = 0
-                        for (event in state.dayEvents) {
-                            when (event.status) {
-                                com.studentos.core.database.entity.ClassEventEntity.STATUS_PRESENT -> totalP++
-                                com.studentos.core.database.entity.ClassEventEntity.STATUS_ABSENT -> totalA++
-                                com.studentos.core.database.entity.ClassEventEntity.STATUS_CANCELLED -> totalC++
-                                com.studentos.core.database.entity.ClassEventEntity.STATUS_HOLIDAY -> totalH++
-                                com.studentos.core.database.entity.ClassEventEntity.STATUS_EXTRA_CLASS -> totalEP++
-                            }
-                        }
-
-                        val canSkip = com.studentos.feature.attendance.domain.calculator.BunkCalculator.canSkip(totalP, totalA, totalC, totalH, totalEP, state.threshold)
-                        val mustAttend = com.studentos.feature.attendance.domain.calculator.BunkCalculator.mustAttend(totalP, totalA, totalC, totalH, totalEP, state.threshold)
-
-                        BunkCalculatorWidget(
-                            canSkip = canSkip,
-                            mustAttend = mustAttend,
-                            threshold = state.threshold,
-                            totalHeld = state.totalHeldCount
-                        )
                     }
 
                     if (showAddExtraClassDialog) {

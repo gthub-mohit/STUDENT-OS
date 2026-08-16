@@ -118,16 +118,12 @@ fun AttendanceAnalyticsScreen(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        if (state.totalHeldCount > 0) {
-                            item {
-                                OverallSummaryHeader(
-                                    overallPercentage = state.overallPercentage,
-                                    totalPresent = state.totalPresentCount,
-                                    totalHeld = state.totalHeldCount,
-                                    threshold = state.threshold,
-                                    isBelowThreshold = state.isBelowThreshold
-                                )
-                            }
+                        item {
+                            OverallSummaryHeader(
+                                overallPercentage = state.overallPercentage,
+                                totalHeld = state.totalHeldCount,
+                                isBelowThreshold = state.isBelowThreshold
+                            )
                         }
 
                         item {
@@ -164,51 +160,58 @@ fun AttendanceAnalyticsScreen(
     }
 }
 
+fun getAttendanceStatusMessage(overallPercentage: Double, totalHeld: Int): String {
+    if (totalHeld == 0) {
+        return "Mark a few classes to see your attendance trend."
+    }
+    return when {
+        overallPercentage >= 90.0 -> "You're comfortably above your target."
+        overallPercentage >= 85.0 -> "Looking solid. You have a healthy attendance buffer."
+        overallPercentage >= 75.0 -> "You're on track. Keep a little buffer for unexpected absences."
+        overallPercentage >= 70.0 -> "You're getting close to the danger zone. Be a little careful with your next few classes."
+        else -> "Attendance needs attention. Prioritize upcoming classes to recover."
+    }
+}
+
 @Composable
 private fun OverallSummaryHeader(
     overallPercentage: Double,
-    totalPresent: Int,
     totalHeld: Int,
-    threshold: Int,
     isBelowThreshold: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val message = getAttendanceStatusMessage(overallPercentage, totalHeld)
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isBelowThreshold) Color(0xFFF8D7DA) else MaterialTheme.colorScheme.primaryContainer
         ),
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Overall Attendance",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isBelowThreshold) Color(0xFF721C24) else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Text(
-                    text = "Overall Attendance",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isBelowThreshold) Color(0xFF721C24) else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = String.format(Locale.getDefault(), "%.1f%%", overallPercentage),
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = if (totalHeld > 0) String.format(Locale.getDefault(), "%.1f%%", overallPercentage) else "--%",
+                    style = MaterialTheme.typography.headlineMedium,
                     color = if (isBelowThreshold) Color(0xFF721C24) else MaterialTheme.colorScheme.onPrimaryContainer
                 )
-            }
-            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "$totalPresent / $totalHeld attended",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isBelowThreshold) Color(0xFF721C24) else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = "Target: $threshold%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isBelowThreshold) Color(0xFF721C24) else MaterialTheme.colorScheme.onPrimaryContainer
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isBelowThreshold) Color(0xFF721C24) else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

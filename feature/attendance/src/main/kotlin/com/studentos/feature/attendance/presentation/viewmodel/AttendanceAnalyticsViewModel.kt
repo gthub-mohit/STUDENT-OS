@@ -6,6 +6,7 @@ import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.relation.SubjectAttendanceSummary
 import com.studentos.feature.attendance.domain.calculator.AttendanceCalculator
 import com.studentos.feature.attendance.domain.repository.ClassEventRepository
+import com.studentos.feature.attendance.domain.repository.SubjectRepository
 import com.studentos.feature.attendance.presentation.state.AnalyticsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AttendanceAnalyticsViewModel @Inject constructor(
     private val classEventRepository: ClassEventRepository,
-    private val settingsDao: SettingsDao
+    private val settingsDao: SettingsDao,
+    private val subjectRepository: SubjectRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AnalyticsUiState>(AnalyticsUiState.Loading)
@@ -30,6 +32,7 @@ class AttendanceAnalyticsViewModel @Inject constructor(
 
     private fun loadAnalytics() {
         viewModelScope.launch(Dispatchers.IO) {
+            subjectRepository?.cleanupInvalidOcrSubjects()
             val thresholdStr = settingsDao.get("attendance_threshold")
             val threshold = thresholdStr?.toIntOrNull() ?: 75
 

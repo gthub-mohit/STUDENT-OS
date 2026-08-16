@@ -29,6 +29,7 @@ class ManageSubjectsViewModel @Inject constructor(
 
     private fun loadSubjects() {
         viewModelScope.launch(Dispatchers.IO) {
+            subjectRepository.cleanupInvalidOcrSubjects()
             subjectRepository.getAllSubjectsIncludingArchived().collect { allSubjects ->
                 val active = allSubjects.filter { it.archivedAt == null }
                 val archived = allSubjects.filter { it.archivedAt != null }

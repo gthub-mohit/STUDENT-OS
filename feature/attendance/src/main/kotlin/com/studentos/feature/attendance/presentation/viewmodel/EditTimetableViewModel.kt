@@ -2,9 +2,10 @@ package com.studentos.feature.attendance.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.studentos.core.database.dao.TimetableSlotDao
 import com.studentos.core.database.entity.TimetableSlotEntity
+import com.studentos.core.events.AppResult
 import com.studentos.feature.attendance.domain.repository.SubjectRepository
+import com.studentos.feature.attendance.domain.repository.TimetableRepository
 import com.studentos.feature.attendance.presentation.state.EditTimetableUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class EditTimetableViewModel @Inject constructor(
-    private val timetableSlotDao: TimetableSlotDao,
+    private val timetableRepository: TimetableRepository,
     private val subjectRepository: SubjectRepository
 ) : ViewModel() {
 
@@ -33,7 +34,7 @@ class EditTimetableViewModel @Inject constructor(
     private fun loadTimetableData() {
         viewModelScope.launch(Dispatchers.IO) {
             combine(
-                timetableSlotDao.getAllSlots(),
+                timetableRepository.getAllSlots(),
                 subjectRepository.getActiveSubjects(),
                 _selectedDay
             ) { slots, subjects, selectedDay ->
@@ -63,40 +64,67 @@ class EditTimetableViewModel @Inject constructor(
         validUntil: Long? = null
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val newSlot = TimetableSlotEntity(
-                    subjectId = subjectId,
-                    dayOfWeek = dayOfWeek,
-                    startTime = startTime,
-                    endTime = endTime,
-                    location = location,
-                    weekParity = weekParity,
-                    validFrom = validFrom,
-                    validUntil = validUntil
-                )
-                timetableSlotDao.insert(newSlot)
-            } catch (e: Exception) {
-                _uiState.value = EditTimetableUiState.Error(e.message ?: "Failed to add timetable slot")
+            val newSlot = TimetableSlotEntity(
+                subjectId = subjectId,
+                dayOfWeek = dayOfWeek,
+                startTime = startTime,
+                endTime = endTime,
+                location = location,
+                weekParity = weekParity,
+                validFrom = validFrom,
+                validUntil = validUntil
+            )
+            when (val result = timetableRepository.addSlot(newSlot)) {
+                is AppResult.Failure -> {
+                    val msg = when (val r = result.reason) {
+                        is com.studentos.core.events.AppError.DatabaseError -> r.message
+                        is com.studentos.core.events.AppError.ValidationError -> r.message
+                        is com.studentos.core.events.AppError.NetworkError -> r.message
+                        else -> "Failed to add timetable slot"
+                    }
+                    _uiState.value = EditTimetableUiState.Error(msg)
+                }
+                is AppResult.Success -> {
+                    // Reactive Flow will update UI automatically
+                }
             }
         }
     }
 
     fun updateSlot(slot: TimetableSlotEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                timetableSlotDao.update(slot)
-            } catch (e: Exception) {
-                _uiState.value = EditTimetableUiState.Error(e.message ?: "Failed to update timetable slot")
+            when (val result = timetableRepository.updateSlot(slot)) {
+                is AppResult.Failure -> {
+                    val msg = when (val r = result.reason) {
+                        is com.studentos.core.events.AppError.DatabaseError -> r.message
+                        is com.studentos.core.events.AppError.ValidationError -> r.message
+                        is com.studentos.core.events.AppError.NetworkError -> r.message
+                        else -> "Failed to update timetable slot"
+                    }
+                    _uiState.value = EditTimetableUiState.Error(msg)
+                }
+                is AppResult.Success -> {
+                    // Reactive Flow will update UI automatically
+                }
             }
         }
     }
 
     fun deleteSlot(slotId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                timetableSlotDao.deleteById(slotId)
-            } catch (e: Exception) {
-                _uiState.value = EditTimetableUiState.Error(e.message ?: "Failed to delete timetable slot")
+            when (val result = timetableRepository.deleteSlot(slotId)) {
+                is AppResult.Failure -> {
+                    val msg = when (val r = result.reason) {
+                        is com.studentos.core.events.AppError.DatabaseError -> r.message
+                        is com.studentos.core.events.AppError.ValidationError -> r.message
+                        is com.studentos.core.events.AppError.NetworkError -> r.message
+                        else -> "Failed to delete timetable slot"
+                    }
+                    _uiState.value = EditTimetableUiState.Error(msg)
+                }
+                is AppResult.Success -> {
+                    // Reactive Flow will update UI automatically
+                }
             }
         }
     }

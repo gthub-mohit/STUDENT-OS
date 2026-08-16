@@ -13,6 +13,17 @@ interface TimetableRepository {
     suspend fun importTimetable(
         slots: List<ParsedTimetableSlot>,
         replaceExisting: Boolean,
-        horizonDays: Int
+        horizonDays: Int = 90
+    ): AppResult<Unit>
+    suspend fun addSlot(
+        slot: TimetableSlotEntity,
+        horizonDays: Int = 90
+    ): AppResult<Long>
+    suspend fun updateSlot(
+        slot: TimetableSlotEntity,
+        horizonDays: Int = 90
+    ): AppResult<Unit>
+    suspend fun deleteSlot(
+        slotId: Long
     ): AppResult<Unit>
 }

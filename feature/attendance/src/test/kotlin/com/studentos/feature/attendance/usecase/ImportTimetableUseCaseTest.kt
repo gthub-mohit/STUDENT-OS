@@ -31,6 +31,10 @@ class ImportTimetableUseCaseTest {
             lastHorizonDays = horizonDays
             return AppResult.Success(Unit)
         }
+
+        override suspend fun addSlot(slot: com.studentos.core.database.entity.TimetableSlotEntity, horizonDays: Int): AppResult<Long> = AppResult.Success(1L)
+        override suspend fun updateSlot(slot: com.studentos.core.database.entity.TimetableSlotEntity, horizonDays: Int): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun deleteSlot(slotId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 
     @Test

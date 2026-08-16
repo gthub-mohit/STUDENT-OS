@@ -190,6 +190,139 @@ class TimetableRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addSlot(
+        slot: TimetableSlotEntity,
+        horizonDays: Int
+    ): AppResult<Long> {
+        return try {
+            database.withTransaction {
+                val now = System.currentTimeMillis()
+                val slotId = timetableSlotDao.insert(slot)
+                val insertedSlot = slot.copy(id = slotId)
+                populateEventsForSlot(insertedSlot, horizonDays, now)
+                AppResult.Success(slotId)
+            }
+        } catch (e: Exception) {
+            AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to add timetable slot"))
+        }
+    }
+
+    override suspend fun updateSlot(
+        slot: TimetableSlotEntity,
+        horizonDays: Int
+    ): AppResult<Unit> {
+        return try {
+            database.withTransaction {
+                val now = System.currentTimeMillis()
+                classEventDao.deleteUnmarkedBySlotIds(listOf(slot.id))
+                classEventDao.nullifySlotReferences(listOf(slot.id), now)
+                timetableSlotDao.update(slot)
+                populateEventsForSlot(slot, horizonDays, now)
+                AppResult.Success(Unit)
+            }
+        } catch (e: Exception) {
+            AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to update timetable slot"))
+        }
+    }
+
+    override suspend fun deleteSlot(
+        slotId: Long
+    ): AppResult<Unit> {
+        return try {
+            database.withTransaction {
+                val now = System.currentTimeMillis()
+                classEventDao.deleteUnmarkedBySlotIds(listOf(slotId))
+                classEventDao.nullifySlotReferences(listOf(slotId), now)
+                timetableSlotDao.deleteById(slotId)
+                AppResult.Success(Unit)
+            }
+        } catch (e: Exception) {
+            AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to delete timetable slot"))
+        }
+    }
+
+    private suspend fun populateEventsForSlot(
+        slot: TimetableSlotEntity,
+        horizonDays: Int,
+        now: Long
+    ) {
+        val (startH, startM) = parseHourMinute(slot.startTime)
+        val (endH, endM) = parseHourMinute(slot.endTime)
+
+        val nowCal = Calendar.getInstance()
+        val currentDow = nowCal.get(Calendar.DAY_OF_WEEK)
+        val daysFromMonday = when (currentDow) {
+            Calendar.MONDAY -> 0
+            Calendar.TUESDAY -> 1
+            Calendar.WEDNESDAY -> 2
+            Calendar.THURSDAY -> 3
+            Calendar.FRIDAY -> 4
+            Calendar.SATURDAY -> 5
+            Calendar.SUNDAY -> 6
+            else -> 0
+        }
+        val startCal = (nowCal.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, -daysFromMonday)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        for (dayOffset in 0 until horizonDays) {
+            val currentDayCal = (startCal.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_YEAR, dayOffset)
+            }
+
+            val currentDayOfWeek = when (currentDayCal.get(Calendar.DAY_OF_WEEK)) {
+                Calendar.MONDAY -> 1
+                Calendar.TUESDAY -> 2
+                Calendar.WEDNESDAY -> 3
+                Calendar.THURSDAY -> 4
+                Calendar.FRIDAY -> 5
+                Calendar.SATURDAY -> 6
+                Calendar.SUNDAY -> 7
+                else -> 1
+            }
+
+            if (currentDayOfWeek == slot.dayOfWeek) {
+                val eventCal = (currentDayCal.clone() as Calendar).apply {
+                    set(Calendar.HOUR_OF_DAY, startH)
+                    set(Calendar.MINUTE, startM)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val scheduledAt = eventCal.timeInMillis
+
+                val endEventCal = (currentDayCal.clone() as Calendar).apply {
+                    set(Calendar.HOUR_OF_DAY, endH)
+                    set(Calendar.MINUTE, endM)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val endAt = if (endEventCal.timeInMillis > scheduledAt) {
+                    endEventCal.timeInMillis
+                } else {
+                    scheduledAt + parseDurationMs(slot.startTime, slot.endTime)
+                }
+
+                val existingEvent = classEventDao.getEventBySubjectAndSchedule(slot.subjectId, scheduledAt)
+                if (existingEvent == null) {
+                    classEventDao.insert(
+                        ClassEventEntity(
+                            timetableSlotId = slot.id,
+                            subjectId = slot.subjectId,
+                            scheduledAt = scheduledAt,
+                            endAt = endAt,
+                            status = ClassEventEntity.STATUS_UNMARKED,
+                            updatedAt = now
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     private fun parseHourMinute(time: String): Pair<Int, Int> {
         return try {
             val parts = time.split(":").map { it.trim().toInt() }

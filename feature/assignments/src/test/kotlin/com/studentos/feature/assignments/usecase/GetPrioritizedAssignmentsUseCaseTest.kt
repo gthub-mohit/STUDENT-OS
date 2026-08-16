@@ -40,10 +40,10 @@ class GetPrioritizedAssignmentsUseCaseTest {
     fun categorizeAndPrioritize_groupsAssignmentsCorrectlyByUrgency() = runBlocking {
         val zoneId = ZoneId.systemDefault()
         val todayLocalDate = LocalDate.now(zoneId)
-        val nowEpoch = System.currentTimeMillis()
-        val todayEpoch = nowEpoch + 3600000L // 1 hour in the future today
-        val tomorrowEpoch = todayLocalDate.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli() + 3600000L
-        val overdueEpoch = nowEpoch - 86400000L
+        val nowEpoch = todayLocalDate.atStartOfDay(zoneId).toInstant().toEpochMilli() + 10 * 3600000L // 10:00 AM today
+        val todayEpoch = todayLocalDate.atStartOfDay(zoneId).toInstant().toEpochMilli() + 14 * 3600000L // 2:00 PM today
+        val tomorrowEpoch = todayLocalDate.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli() + 14 * 3600000L
+        val overdueEpoch = todayLocalDate.minusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli() + 14 * 3600000L
 
         val items = listOf(
             AssignmentEntity(id = 1L, subjectId = 1L, title = "Overdue HW", deadline = overdueEpoch, priority = AssignmentEntity.PRIORITY_HIGH, status = AssignmentEntity.STATUS_PENDING, createdAt = nowEpoch),

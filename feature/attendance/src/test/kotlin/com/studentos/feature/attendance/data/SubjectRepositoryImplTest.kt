@@ -96,7 +96,7 @@ class SubjectRepositoryImplTest {
         val invalid2 = SubjectEntity(id = 102L, name = "Enire cass")
         val invalid3 = SubjectEntity(id = 103L, name = "Entre")
 
-        coEvery { subjectDao.getByNames(listOf("C003", "Enire cass", "Entre")) } returns listOf(invalid1, invalid2, invalid3)
+        coEvery { subjectDao.getByNames(any()) } returns listOf(invalid1, invalid2, invalid3)
         coEvery { timetableSlotDao.getSlotIdsForSubject(101L) } returns listOf(1001L)
         coEvery { timetableSlotDao.getSlotIdsForSubject(102L) } returns listOf(1002L)
         coEvery { timetableSlotDao.getSlotIdsForSubject(103L) } returns emptyList()
@@ -127,7 +127,7 @@ class SubjectRepositoryImplTest {
         )
 
         // DB only contains valid subjects
-        coEvery { subjectDao.getByNames(listOf("C003", "Enire cass", "Entre")) } returns emptyList()
+        coEvery { subjectDao.getByNames(any()) } returns emptyList()
 
         val result = repo.cleanupInvalidOcrSubjects(listOf("C003", "Enire cass", "Entre"))
 
@@ -150,10 +150,10 @@ class SubjectRepositoryImplTest {
         )
 
         val invalidSubject = SubjectEntity(id = 201L, name = "C003")
-        coEvery { subjectDao.getByNames(listOf("C003", "Enire cass", "Entre")) } returns listOf(invalidSubject)
+        coEvery { subjectDao.getByNames(any()) } returns listOf(invalidSubject)
         coEvery { timetableSlotDao.getSlotIdsForSubject(201L) } returns listOf(2001L)
         // User had marked 1 class as PRESENT
-        coEvery { classEventDao.countEventsForSubject(201L) } returns 1
+        coEvery { classEventDao.countMarkedEventsForSubject(201L) } returns 1
 
         val result = repo.cleanupInvalidOcrSubjects(listOf("C003", "Enire cass", "Entre"))
 
@@ -181,7 +181,7 @@ class SubjectRepositoryImplTest {
         )
 
         val invalid1 = SubjectEntity(id = 101L, name = "C003")
-        coEvery { subjectDao.getByNames(listOf("C003", "Enire cass", "Entre")) } returnsMany listOf(
+        coEvery { subjectDao.getByNames(any()) } returnsMany listOf(
             listOf(invalid1),
             emptyList()
         )
@@ -193,5 +193,38 @@ class SubjectRepositoryImplTest {
 
         assertTrue(firstRun is AppResult.Success)
         assertTrue(secondRun is AppResult.Success)
+    }
+
+    @Test
+    fun cleanupInvalidOcrSubjects_existingC003Subject_isActuallyDeletedFromDatabase() = runTest {
+        val timetableSlotDao: com.studentos.core.database.dao.TimetableSlotDao = mockk(relaxed = true)
+        val classEventDao: com.studentos.core.database.dao.ClassEventDao = mockk(relaxed = true)
+        val repo = SubjectRepositoryImpl(
+            subjectDao = subjectDao,
+            timetableSlotDao = timetableSlotDao,
+            classEventDao = classEventDao
+        )
+
+        val c003Subject = SubjectEntity(id = 301L, name = "C003")
+        val c003SlotId = 4001L
+
+        // C003 exists with a timetable slot and unmarked events (standard OCR mistake)
+        coEvery { subjectDao.getByNames(any()) } returns listOf(c003Subject)
+        coEvery { timetableSlotDao.getSlotIdsForSubject(301L) } returns listOf(c003SlotId)
+        coEvery { classEventDao.countMarkedEventsForSubject(301L) } returns 0
+
+        val result = repo.cleanupInvalidOcrSubjects(listOf("C003"))
+
+        assertTrue(result is AppResult.Success)
+
+        // 1. Unmarked events for the slot are deleted
+        coVerify(exactly = 1) { classEventDao.deleteUnmarkedBySlotIds(listOf(c003SlotId)) }
+        // 2. Timetable slot is deleted
+        coVerify(exactly = 1) { timetableSlotDao.deleteBySubjectId(301L) }
+        // 3. Any remaining unmarked events for the subject are deleted
+        coVerify { classEventDao.deleteUnmarkedBySubjectId(301L) }
+        // 4. The C003 SubjectEntity is DELETED directly from the database table (not archived/hidden)
+        coVerify(exactly = 1) { subjectDao.deleteById(301L) }
+        coVerify(exactly = 0) { subjectDao.archive(301L, any()) }
     }
 }

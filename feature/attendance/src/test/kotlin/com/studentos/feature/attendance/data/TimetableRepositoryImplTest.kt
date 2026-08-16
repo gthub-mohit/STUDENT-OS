@@ -265,4 +265,71 @@ class TimetableRepositoryImplTest {
             classEventDao.insert(any())
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Manual Timetable Editing & Event Horizon Propagation Tests
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Test
+    fun addSlot_insertsSlotAndPopulatesEventHorizon() = runTest {
+        val slot = TimetableSlotEntity(
+            id = 0L,
+            subjectId = 10L,
+            dayOfWeek = 1, // Monday
+            startTime = "09:00",
+            endTime = "09:55",
+            location = "C104",
+            validFrom = 1000L
+        )
+        coEvery { timetableSlotDao.insert(any()) } returns 500L
+        coEvery { classEventDao.getEventBySubjectAndSchedule(any(), any()) } returns null
+
+        val result = repository.addSlot(slot, horizonDays = 14)
+        assertTrue(result is AppResult.Success)
+
+        coVerify { timetableSlotDao.insert(slot) }
+        // For a 14-day horizon, exactly 2 Mondays exist -> 2 class events inserted
+        coVerify(exactly = 2) {
+            classEventDao.insert(match { it.subjectId == 10L && it.timetableSlotId == 500L && it.status == "UNMARKED" })
+        }
+    }
+
+    @Test
+    fun updateSlot_replacesUnmarkedEventsAndPopulatesNewHorizon() = runTest {
+        val slot = TimetableSlotEntity(
+            id = 500L,
+            subjectId = 10L,
+            dayOfWeek = 2, // Tuesday (changed from Monday)
+            startTime = "11:00",
+            endTime = "11:55",
+            location = "C002",
+            validFrom = 1000L
+        )
+        coEvery { classEventDao.getEventBySubjectAndSchedule(any(), any()) } returns null
+
+        val result = repository.updateSlot(slot, horizonDays = 14)
+        assertTrue(result is AppResult.Success)
+
+        coVerify {
+            classEventDao.deleteUnmarkedBySlotIds(listOf(500L))
+            classEventDao.nullifySlotReferences(listOf(500L), any())
+            timetableSlotDao.update(slot)
+        }
+        // Exactly 2 Tuesdays in 14 days -> 2 new class events inserted
+        coVerify(exactly = 2) {
+            classEventDao.insert(match { it.subjectId == 10L && it.timetableSlotId == 500L && it.status == "UNMARKED" })
+        }
+    }
+
+    @Test
+    fun deleteSlot_removesUnmarkedEventsAndDetachesMarkedEvents() = runTest {
+        val result = repository.deleteSlot(500L)
+        assertTrue(result is AppResult.Success)
+
+        coVerify {
+            classEventDao.deleteUnmarkedBySlotIds(listOf(500L))
+            classEventDao.nullifySlotReferences(listOf(500L), any())
+            timetableSlotDao.deleteById(500L)
+        }
+    }
 }

@@ -156,4 +156,25 @@ class AttendanceAnalyticsViewModelTest {
             assertEquals(0, vac202.totalHeldCount)
         }
     }
+
+    @Test
+    fun getAttendanceStatusMessage_deterministicContextualMessages() {
+        val zeroData = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(0.0, 0)
+        assertEquals("Mark a few classes to see your attendance trend.", zeroData)
+
+        val above90 = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(92.5, 20)
+        assertEquals("You're comfortably above your target.", above90)
+
+        val above85 = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(87.0, 20)
+        assertEquals("Looking solid. You have a healthy attendance buffer.", above85)
+
+        val above75 = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(78.5, 20)
+        assertEquals("You're on track. Keep a little buffer for unexpected absences.", above75)
+
+        val above70 = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(72.0, 20)
+        assertEquals("You're getting close to the danger zone. Be a little careful with your next few classes.", above70)
+
+        val below70 = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(64.0, 20)
+        assertEquals("Attendance needs attention. Prioritize upcoming classes to recover.", below70)
+    }
 }

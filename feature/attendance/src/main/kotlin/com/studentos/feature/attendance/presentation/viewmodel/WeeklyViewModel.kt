@@ -48,6 +48,7 @@ class WeeklyViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
+            subjectRepository.cleanupInvalidOcrSubjects()
             val thresholdStr = settingsDao.get("attendance_threshold")
             val threshold = thresholdStr?.toIntOrNull() ?: 75
 

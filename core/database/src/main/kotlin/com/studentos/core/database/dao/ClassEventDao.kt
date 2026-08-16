@@ -92,7 +92,7 @@ interface ClassEventDao {
      * Deletes only UNMARKED (auto-generated future) class events that reference
      * any of the given timetable slot IDs. Marked attendance records survive.
      */
-    @Query("DELETE FROM class_events WHERE timetable_slot_id IN (:slotIds) AND status = 'UNMARKED'")
+    @Query("DELETE FROM class_events WHERE (UPPER(TRIM(status)) = 'UNMARKED' OR status IS NULL OR status = '') AND (timetable_slot_id IN (:slotIds) OR linked_slot_id IN (:slotIds))")
     suspend fun deleteUnmarkedBySlotIds(slotIds: List<Long>)
 
     /**
@@ -100,13 +100,13 @@ interface ClassEventDao {
      * class_events that have been marked (PRESENT/ABSENT/CANCELLED/HOLIDAY/EXTRA_CLASS).
      * This safely detaches them from the old timetable slots before those slots are deleted.
      */
-    @Query("UPDATE class_events SET timetable_slot_id = NULL, linked_slot_id = NULL, updated_at = :updatedAt WHERE timetable_slot_id IN (:slotIds) AND status != 'UNMARKED'")
+    @Query("UPDATE class_events SET timetable_slot_id = NULL, linked_slot_id = NULL, updated_at = :updatedAt WHERE (timetable_slot_id IN (:slotIds) OR linked_slot_id IN (:slotIds)) AND UPPER(TRIM(status)) != 'UNMARKED' AND status IS NOT NULL")
     suspend fun nullifySlotReferences(slotIds: List<Long>, updatedAt: Long)
 
     /**
      * Returns all class event IDs that reference the given timetable slot IDs.
      */
-    @Query("SELECT id FROM class_events WHERE timetable_slot_id IN (:slotIds)")
+    @Query("SELECT id FROM class_events WHERE timetable_slot_id IN (:slotIds) OR linked_slot_id IN (:slotIds)")
     suspend fun getEventIdsBySlotIds(slotIds: List<Long>): List<Long>
 
     /**
@@ -118,7 +118,7 @@ interface ClassEventDao {
     /**
      * Deletes only UNMARKED auto-generated class events belonging to the given subject ID.
      */
-    @Query("DELETE FROM class_events WHERE subject_id = :subjectId AND status = 'UNMARKED'")
+    @Query("DELETE FROM class_events WHERE (UPPER(TRIM(status)) = 'UNMARKED' OR status IS NULL OR status = '') AND subject_id = :subjectId")
     suspend fun deleteUnmarkedBySubjectId(subjectId: Long)
 
     /**
@@ -126,4 +126,10 @@ interface ClassEventDao {
      */
     @Query("SELECT COUNT(*) FROM class_events WHERE subject_id = :subjectId")
     suspend fun countEventsForSubject(subjectId: Long): Int
+
+    /**
+     * Returns count of marked attendance events referencing the given subject ID.
+     */
+    @Query("SELECT COUNT(*) FROM class_events WHERE subject_id = :subjectId AND UPPER(TRIM(status)) IN ('PRESENT', 'ABSENT', 'CANCELLED', 'HOLIDAY', 'EXTRA_CLASS')")
+    suspend fun countMarkedEventsForSubject(subjectId: Long): Int
 }

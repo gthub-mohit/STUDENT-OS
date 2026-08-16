@@ -78,7 +78,8 @@ class SubjectRepositoryImpl @Inject constructor(
     override suspend fun cleanupInvalidOcrSubjects(targetNames: List<String>): AppResult<Unit> {
         return try {
             val executeCleanup = suspend {
-                val invalidSubjects = subjectDao.getByNames(targetNames)
+                val searchNames = (targetNames + targetNames.map { it.trim().uppercase() } + targetNames.map { it.trim() }).distinct()
+                val invalidSubjects = subjectDao.getByNames(searchNames)
                 val now = System.currentTimeMillis()
                 for (subject in invalidSubjects) {
                     val slotIds = timetableSlotDao?.getSlotIdsForSubject(subject.id) ?: emptyList()
@@ -88,8 +89,9 @@ class SubjectRepositoryImpl @Inject constructor(
                         timetableSlotDao?.deleteBySubjectId(subject.id)
                     }
                     classEventDao?.deleteUnmarkedBySubjectId(subject.id)
-                    val remainingEvents = classEventDao?.countEventsForSubject(subject.id) ?: 0
-                    if (remainingEvents == 0) {
+                    val markedEvents = classEventDao?.countMarkedEventsForSubject(subject.id) ?: 0
+                    if (markedEvents == 0) {
+                        classEventDao?.deleteUnmarkedBySubjectId(subject.id)
                         subjectDao.deleteById(subject.id)
                     } else {
                         subjectDao.archive(subject.id, now)

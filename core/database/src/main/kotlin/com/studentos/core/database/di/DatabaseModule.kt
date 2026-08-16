@@ -63,24 +63,27 @@ object DatabaseModule {
                     // Safely clean up known OCR garbage subjects and their unmarked events / slots
                     db.execSQL("""
                         DELETE FROM class_events 
-                        WHERE status = 'UNMARKED' AND (
-                            subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre'))
-                            OR timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre')))
+                        WHERE (UPPER(TRIM(status)) = 'UNMARKED' OR status IS NULL OR status = '') AND (
+                            subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE'))
+                            OR timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE')))
+                            OR linked_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE')))
                         )
                     """.trimIndent())
                     db.execSQL("""
                         UPDATE class_events 
                         SET timetable_slot_id = NULL, linked_slot_id = NULL, updated_at = strftime('%s', 'now') * 1000 
-                        WHERE timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre')))
+                        WHERE (timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE')))
+                            OR linked_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE'))))
+                            AND UPPER(TRIM(status)) != 'UNMARKED' AND status IS NOT NULL
                     """.trimIndent())
                     db.execSQL("""
                         DELETE FROM timetable_slots 
-                        WHERE subject_id IN (SELECT id FROM subjects WHERE name IN ('C003', 'Enire cass', 'Entre'))
+                        WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE'))
                     """.trimIndent())
                     db.execSQL("""
                         DELETE FROM subjects 
-                        WHERE name IN ('C003', 'Enire cass', 'Entre') 
-                        AND id NOT IN (SELECT subject_id FROM class_events)
+                        WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE') 
+                        AND id NOT IN (SELECT subject_id FROM class_events WHERE UPPER(TRIM(status)) IN ('PRESENT', 'ABSENT', 'CANCELLED', 'HOLIDAY', 'EXTRA_CLASS'))
                     """.trimIndent())
                 }
             })

@@ -40,6 +40,9 @@ class WeeklyViewModelTest {
             replaceExisting: Boolean,
             horizonDays: Int
         ): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun addSlot(slot: TimetableSlotEntity, horizonDays: Int): AppResult<Long> = AppResult.Success(1L)
+        override suspend fun updateSlot(slot: TimetableSlotEntity, horizonDays: Int): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun deleteSlot(slotId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 
     private class FakeSubjectRepository : SubjectRepository {
