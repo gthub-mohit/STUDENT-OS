@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.studentos.core.database.entity.AssignmentEntity
+import com.studentos.feature.assignments.domain.model.TaskType
 
 @Composable
 fun AssignmentCard(
@@ -32,6 +33,8 @@ fun AssignmentCard(
     onStatusClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val taskType = TaskType.fromString(assignment.taskType)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -50,12 +53,14 @@ fun AssignmentCard(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
+                TaskTypeBadge(taskType = taskType)
+                Spacer(modifier = Modifier.width(6.dp))
                 PriorityBadge(priority = assignment.priority)
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 IconButton(onClick = onDeleteClick) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Assignment",
+                        contentDescription = "Delete Task",
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

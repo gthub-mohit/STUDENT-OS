@@ -7,7 +7,7 @@ enum class UrgencyCategory(val displayName: String) {
     DUE_TODAY("Due Today"),
     DUE_TOMORROW("Due Tomorrow"),
     DUE_THIS_WEEK("Due This Week"),
-    UPCOMING("Upcoming")
+    LATER("Later")
 }
 
 data class PrioritizedAssignmentGroup(

@@ -24,6 +24,8 @@ import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.dao.TimetableSlotDao
 import com.studentos.core.database.migration.MIGRATION_1_2
+import com.studentos.core.database.migration.MIGRATION_2_3
+import com.studentos.core.database.migration.MIGRATION_1_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -50,41 +52,20 @@ object DatabaseModule {
         )
             // Enable Write-Ahead Logging (WAL mode) for concurrency and performance
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_1_3)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
+                    try {
+                        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
+                    } catch (_: Throwable) {}
                 }
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
-                    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
-                    
-                    // Safely clean up known OCR garbage subjects and their unmarked events / slots
-                    db.execSQL("""
-                        DELETE FROM class_events 
-                        WHERE (UPPER(TRIM(status)) = 'UNMARKED' OR status IS NULL OR status = '') AND (
-                            subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE'))
-                            OR timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE')))
-                            OR linked_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE')))
-                        )
-                    """.trimIndent())
-                    db.execSQL("""
-                        UPDATE class_events 
-                        SET timetable_slot_id = NULL, linked_slot_id = NULL, updated_at = strftime('%s', 'now') * 1000 
-                        WHERE (timetable_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE')))
-                            OR linked_slot_id IN (SELECT id FROM timetable_slots WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE'))))
-                            AND UPPER(TRIM(status)) != 'UNMARKED' AND status IS NOT NULL
-                    """.trimIndent())
-                    db.execSQL("""
-                        DELETE FROM timetable_slots 
-                        WHERE subject_id IN (SELECT id FROM subjects WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE'))
-                    """.trimIndent())
-                    db.execSQL("""
-                        DELETE FROM subjects 
-                        WHERE UPPER(TRIM(name)) IN ('C003', 'ENIRE CASS', 'ENTRE') 
-                        AND id NOT IN (SELECT subject_id FROM class_events WHERE UPPER(TRIM(status)) IN ('PRESENT', 'ABSENT', 'CANCELLED', 'HOLIDAY', 'EXTRA_CLASS'))
-                    """.trimIndent())
+                    try {
+                        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
+                    } catch (_: Throwable) {}
                 }
             })
             .build()

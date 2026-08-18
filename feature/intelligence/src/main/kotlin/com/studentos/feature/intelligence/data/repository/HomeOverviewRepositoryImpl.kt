@@ -144,7 +144,8 @@ class HomeOverviewRepositoryImpl @Inject constructor(
                             subtitle = subtitle,
                             category = "ASSIGNMENT",
                             actionRoute = "assignments/list",
-                            timestamp = assignment.deadline
+                            timestamp = assignment.deadline,
+                            entityId = assignment.id
                         )
                     )
                 }
@@ -164,7 +165,8 @@ class HomeOverviewRepositoryImpl @Inject constructor(
                             subtitle = timeStr,
                             category = "CLASS",
                             actionRoute = "weekly",
-                            timestamp = event.scheduledAt
+                            timestamp = event.scheduledAt,
+                            entityId = event.id
                         )
                     )
                 }

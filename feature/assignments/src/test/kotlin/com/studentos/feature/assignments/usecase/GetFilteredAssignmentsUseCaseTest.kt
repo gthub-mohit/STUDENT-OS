@@ -96,4 +96,28 @@ class GetFilteredAssignmentsUseCaseTest {
         assertEquals(1, result.size)
         assertEquals(AssignmentEntity.STATUS_IN_PROGRESS, repo.lastRequestedStatus)
     }
+
+    @Test
+    fun filterWithTaskType_filtersByBothStatusAndTaskType() = runBlocking {
+        val mixedList = listOf(
+            AssignmentEntity(1L, 1L, "Math Assignment", deadline = 1000L, status = AssignmentEntity.STATUS_PENDING, createdAt = 1000L, taskType = "ASSIGNMENT"),
+            AssignmentEntity(2L, 1L, "Math Quiz", deadline = 2000L, status = AssignmentEntity.STATUS_PENDING, createdAt = 1000L, taskType = "QUIZ"),
+            AssignmentEntity(3L, 1L, "Math Lab", deadline = 3000L, status = AssignmentEntity.STATUS_PENDING, createdAt = 1000L, taskType = "LAB_RECORD")
+        )
+
+        val repo = object : AssignmentRepository by FakeAssignmentRepository() {
+            override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> = flowOf(mixedList)
+        }
+        val useCase = GetFilteredAssignmentsUseCase(repo)
+
+        // Filter PENDING + QUIZ
+        val quizResult = useCase(filter = AssignmentFilter.PENDING, taskType = com.studentos.feature.assignments.domain.model.TaskType.QUIZ).first()
+        assertEquals(1, quizResult.size)
+        assertEquals("Math Quiz", quizResult[0].title)
+        assertEquals("QUIZ", quizResult[0].taskType)
+
+        // Filter PENDING + ALL TYPES (null)
+        val allTypesResult = useCase(filter = AssignmentFilter.PENDING, taskType = null).first()
+        assertEquals(3, allTypesResult.size)
+    }
 }

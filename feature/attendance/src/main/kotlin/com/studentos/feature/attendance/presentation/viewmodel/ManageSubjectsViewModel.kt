@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,15 +30,21 @@ class ManageSubjectsViewModel @Inject constructor(
 
     private fun loadSubjects() {
         viewModelScope.launch(Dispatchers.IO) {
-            subjectRepository.cleanupInvalidOcrSubjects()
-            subjectRepository.getAllSubjectsIncludingArchived().collect { allSubjects ->
-                val active = allSubjects.filter { it.archivedAt == null }
-                val archived = allSubjects.filter { it.archivedAt != null }
-                _uiState.value = ManageSubjectsUiState.Success(
-                    activeSubjects = active,
-                    archivedSubjects = archived
-                )
-            }
+            try {
+                subjectRepository.cleanupInvalidOcrSubjects()
+            } catch (_: Throwable) {}
+            subjectRepository.getAllSubjectsIncludingArchived()
+                .catch { error ->
+                    _uiState.value = ManageSubjectsUiState.Error(error.message ?: "Failed to load subjects")
+                }
+                .collect { allSubjects ->
+                    val active = allSubjects.filter { it.archivedAt == null }
+                    val archived = allSubjects.filter { it.archivedAt != null }
+                    _uiState.value = ManageSubjectsUiState.Success(
+                        activeSubjects = active,
+                        archivedSubjects = archived
+                    )
+                }
         }
     }
 

@@ -113,6 +113,13 @@ class AssignmentDetailViewModel @Inject constructor(
         }
     }
 
+    fun updateDeadline(newDeadline: Long) {
+        if (newDeadline <= 0L) return
+        viewModelScope.launch {
+            repository.updateDeadline(assignmentId, newDeadline)
+        }
+    }
+
     fun removeAttachment() {
         viewModelScope.launch {
             repository.setAttachment(assignmentId, null)

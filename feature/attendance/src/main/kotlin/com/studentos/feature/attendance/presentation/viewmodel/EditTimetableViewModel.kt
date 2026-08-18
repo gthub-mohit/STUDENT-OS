@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -43,6 +44,8 @@ class EditTimetableViewModel @Inject constructor(
                     subjects = subjects,
                     selectedDayOfWeek = selectedDay
                 )
+            }.catch { error ->
+                _uiState.value = EditTimetableUiState.Error(error.message ?: "Failed to load timetable")
             }.collect { state ->
                 _uiState.value = state
             }

@@ -85,6 +85,9 @@ class AssignmentRepositoryImpl @Inject constructor(
             if (assignment.title.isBlank()) {
                 return@withContext AppResult.Failure(AppError.ValidationError("Assignment title cannot be empty"))
             }
+            if (assignment.deadline <= 0L) {
+                return@withContext AppResult.Failure(AppError.ValidationError("Due date and time are required"))
+            }
             val newId = assignmentDao.insert(assignment)
             val created = assignment.copy(id = newId)
             reminderScheduler?.scheduleReminder(created)

@@ -65,7 +65,7 @@ import com.studentos.core.database.entity.TimetableSlotEntity
         RecommendationCacheEntity::class,
         AiCallLogEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

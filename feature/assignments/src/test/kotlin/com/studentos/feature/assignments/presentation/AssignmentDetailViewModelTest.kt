@@ -65,6 +65,8 @@ class AssignmentDetailViewModelTest {
         var updatedAttachmentUri: String? = null
         var attachedSourceUri: String? = null
 
+        var updatedDeadline: Long? = null
+
         override fun getAssignmentById(id: Long): Flow<AssignmentEntity?> = flowOf(assignment)
         override fun getAllAssignments(): Flow<List<AssignmentEntity>> = flowOf(emptyList())
         override fun getAssignmentsByStatus(status: String): Flow<List<AssignmentEntity>> = error("Not needed")
@@ -79,7 +81,11 @@ class AssignmentDetailViewModelTest {
             return AppResult.Success(Unit)
         }
 
-        override suspend fun updateDeadline(id: Long, deadline: Long): AppResult<Unit> = error("Not needed")
+        override suspend fun updateDeadline(id: Long, deadline: Long): AppResult<Unit> {
+            updatedDeadline = deadline
+            assignment = assignment?.copy(deadline = deadline)
+            return AppResult.Success(Unit)
+        }
         override suspend fun updateReminderLead(id: Long, leadMs: Long?): AppResult<Unit> = error("Not needed")
 
         override suspend fun deleteAssignment(id: Long): AppResult<Unit> {
@@ -217,5 +223,29 @@ class AssignmentDetailViewModelTest {
         val state = viewModel.uiState.first { it is AssignmentDetailUiState.Deleted }
         assertEquals(AssignmentDetailUiState.Deleted, state)
         assertEquals(5L, repo.deletedId)
+    }
+
+    @Test
+    fun updateDeadline_updatesDeadlineInRepository() = runBlocking {
+        val initialAssignment = AssignmentEntity(
+            id = 5L,
+            subjectId = 10L,
+            title = "Design Doc",
+            deadline = 1000L,
+            status = AssignmentEntity.STATUS_PENDING,
+            createdAt = 500L,
+            taskType = "QUIZ"
+        )
+        val repo = FakeAssignmentRepository(assignment = initialAssignment)
+        val subjectDao = FakeSubjectDao()
+        val updateStatusUseCase = UpdateAssignmentStatusUseCase(repo)
+        val savedStateHandle = SavedStateHandle(mapOf("id" to "5"))
+
+        val viewModel = AssignmentDetailViewModel(savedStateHandle, repo, updateStatusUseCase, subjectDao)
+
+        val newDeadline = 1755500000000L
+        viewModel.updateDeadline(newDeadline)
+
+        assertEquals(newDeadline, repo.updatedDeadline)
     }
 }

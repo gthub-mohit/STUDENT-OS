@@ -61,7 +61,10 @@ data class AssignmentEntity(
     val createdAt: Long,
 
     @ColumnInfo(name = "updated_at", defaultValue = "0")
-    val updatedAt: Long = 0
+    val updatedAt: Long = 0,
+
+    @ColumnInfo(name = "task_type", defaultValue = "'ASSIGNMENT'")
+    val taskType: String = TASK_TYPE_ASSIGNMENT
 ) {
     companion object {
         const val PRIORITY_HIGH = "HIGH"
@@ -72,5 +75,11 @@ data class AssignmentEntity(
         const val STATUS_IN_PROGRESS = "IN_PROGRESS"
         const val STATUS_SUBMITTED = "SUBMITTED"
         const val STATUS_COMPLETED = "COMPLETED"
+
+        const val TASK_TYPE_ASSIGNMENT = "ASSIGNMENT"
+        const val TASK_TYPE_QUIZ = "QUIZ"
+        const val TASK_TYPE_LAB_RECORD = "LAB_RECORD"
+        const val TASK_TYPE_PRACTICAL = "PRACTICAL"
+        const val TASK_TYPE_OTHER = "OTHER"
     }
 }

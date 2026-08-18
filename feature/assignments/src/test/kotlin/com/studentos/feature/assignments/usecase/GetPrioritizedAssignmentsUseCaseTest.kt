@@ -69,4 +69,35 @@ class GetPrioritizedAssignmentsUseCaseTest {
         assertEquals(1, tomorrowGroup?.assignments?.size)
         assertEquals("Tomorrow HW", tomorrowGroup?.assignments?.get(0)?.title)
     }
+
+    @Test
+    fun categorizeAndPrioritize_sortsChronologicallyByExactDeadlineWithinGroup() = runBlocking {
+        val zoneId = ZoneId.systemDefault()
+        val todayLocalDate = LocalDate.now(zoneId)
+        val nowEpoch = todayLocalDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+        val today2pm = todayLocalDate.atStartOfDay(zoneId).toInstant().toEpochMilli() + 14 * 3600000L // 2:00 PM
+        val today10am = todayLocalDate.atStartOfDay(zoneId).toInstant().toEpochMilli() + 10 * 3600000L // 10:00 AM
+        val laterDay = todayLocalDate.plusDays(10).atStartOfDay(zoneId).toInstant().toEpochMilli()
+
+        val items = listOf(
+            AssignmentEntity(id = 1L, subjectId = 1L, title = "2 PM Task", deadline = today2pm, priority = AssignmentEntity.PRIORITY_HIGH, status = AssignmentEntity.STATUS_PENDING, createdAt = nowEpoch),
+            AssignmentEntity(id = 2L, subjectId = 1L, title = "10 AM Task", deadline = today10am, priority = AssignmentEntity.PRIORITY_LOW, status = AssignmentEntity.STATUS_PENDING, createdAt = nowEpoch),
+            AssignmentEntity(id = 3L, subjectId = 1L, title = "Later Task", deadline = laterDay, priority = AssignmentEntity.PRIORITY_MEDIUM, status = AssignmentEntity.STATUS_PENDING, createdAt = nowEpoch)
+        )
+
+        val repo = FakeAssignmentRepository(items)
+        val useCase = GetPrioritizedAssignmentsUseCase(repo)
+
+        val groups = useCase.invoke(nowEpoch = nowEpoch, zoneId = zoneId).first()
+
+        val todayGroup = groups.find { it.category == UrgencyCategory.DUE_TODAY }
+        assertEquals(2, todayGroup?.assignments?.size)
+        // 10 AM task must appear before 2 PM task
+        assertEquals("10 AM Task", todayGroup?.assignments?.get(0)?.title)
+        assertEquals("2 PM Task", todayGroup?.assignments?.get(1)?.title)
+
+        val laterGroup = groups.find { it.category == UrgencyCategory.LATER }
+        assertEquals(1, laterGroup?.assignments?.size)
+        assertEquals("Later Task", laterGroup?.assignments?.get(0)?.title)
+    }
 }

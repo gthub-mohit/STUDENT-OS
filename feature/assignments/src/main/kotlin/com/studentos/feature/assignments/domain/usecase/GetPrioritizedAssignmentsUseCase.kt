@@ -49,7 +49,7 @@ class GetPrioritizedAssignmentsUseCase @Inject constructor(
                 deadlineDate.isEqual(today) -> UrgencyCategory.DUE_TODAY
                 deadlineDate.isEqual(tomorrow) -> UrgencyCategory.DUE_TOMORROW
                 !deadlineDate.isBefore(today) && !deadlineDate.isAfter(endOfWeek) -> UrgencyCategory.DUE_THIS_WEEK
-                else -> UrgencyCategory.UPCOMING
+                else -> UrgencyCategory.LATER
             }
 
             grouped[category]?.add(assignment)
@@ -59,8 +59,8 @@ class GetPrioritizedAssignmentsUseCase @Inject constructor(
             val list = grouped[cat]
             if (!list.isNullOrEmpty()) {
                 val sortedList = list.sortedWith(
-                    compareBy<AssignmentEntity> { getPriorityWeight(it.priority) }
-                        .thenBy { it.deadline }
+                    compareBy<AssignmentEntity> { it.deadline }
+                        .thenBy { getPriorityWeight(it.priority) }
                 )
                 PrioritizedAssignmentGroup(category = cat, assignments = sortedList)
             } else {

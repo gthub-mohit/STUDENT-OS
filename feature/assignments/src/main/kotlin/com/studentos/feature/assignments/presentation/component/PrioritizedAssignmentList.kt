@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +34,7 @@ fun PrioritizedAssignmentList(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(groups, key = { it.category.name }) { group ->
@@ -84,7 +86,7 @@ private fun CategoryHeader(
         UrgencyCategory.DUE_TODAY -> Color(0xFFE65100)
         UrgencyCategory.DUE_TOMORROW -> Color(0xFFF57C00)
         UrgencyCategory.DUE_THIS_WEEK -> MaterialTheme.colorScheme.primary
-        UrgencyCategory.UPCOMING -> MaterialTheme.colorScheme.onSurfaceVariant
+        UrgencyCategory.LATER -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Row(
@@ -99,7 +101,7 @@ private fun CategoryHeader(
         )
 
         Text(
-            text = "$count assignments",
+            text = if (count == 1) "1 task" else "$count tasks",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

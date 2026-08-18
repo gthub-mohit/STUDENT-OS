@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.entity.AssignmentEntity
 import com.studentos.feature.assignments.domain.model.AssignmentFilter
+import com.studentos.feature.assignments.domain.model.TaskType
 import com.studentos.feature.assignments.domain.repository.AssignmentRepository
 import com.studentos.feature.assignments.domain.usecase.CreateAssignmentUseCase
 import com.studentos.feature.assignments.domain.usecase.GetFilteredAssignmentsUseCase
@@ -16,6 +17,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
@@ -36,6 +38,9 @@ class AssignmentListViewModel @Inject constructor(
     private val _selectedFilter = MutableStateFlow(AssignmentFilter.TODAY)
     val selectedFilter: StateFlow<AssignmentFilter> = _selectedFilter.asStateFlow()
 
+    private val _selectedType = MutableStateFlow<TaskType?>(null)
+    val selectedType: StateFlow<TaskType?> = _selectedType.asStateFlow()
+
     private val _assignmentToDelete = MutableStateFlow<AssignmentEntity?>(null)
 
     private val _uiState = MutableStateFlow<AssignmentListUiState>(AssignmentListUiState.Loading)
@@ -47,23 +52,33 @@ class AssignmentListViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeAssignments() {
+        val filterAndTypeFlow = combine(_selectedFilter, _selectedType) { filter, type -> filter to type }
+        val subjectsFlow = combine(
+            subjectDao.getAllSubjectsIncludingArchived(),
+            subjectDao.getActiveSubjects()
+        ) { all, active -> all to active }
+
         combine(
-            _selectedFilter.flatMapLatest { filter ->
-                getFilteredAssignmentsUseCase(filter)
+            filterAndTypeFlow.flatMapLatest { (filter, type) ->
+                getFilteredAssignmentsUseCase(filter, type)
             },
             getPrioritizedAssignmentsUseCase(),
-            subjectDao.getAllSubjectsIncludingArchived(),
-            _selectedFilter,
+            subjectsFlow,
+            filterAndTypeFlow,
             _assignmentToDelete
-        ) { filteredAssignments, prioritizedGroups, subjects, filter, toDelete ->
-            val map = subjects.associate { it.id to it.name }
+        ) { filteredAssignments, prioritizedGroups, (allSubjects, activeSubjects), (filter, type), toDelete ->
+            val map = allSubjects.associate { it.id to it.name }
             AssignmentListUiState.Success(
                 assignments = filteredAssignments,
                 prioritizedGroups = prioritizedGroups,
                 subjectsMap = map,
+                activeSubjects = activeSubjects,
                 currentFilter = filter,
+                currentTypeFilter = type,
                 assignmentToDelete = toDelete
             )
+        }.catch { error ->
+            _uiState.value = AssignmentListUiState.Error(error.message ?: "Failed to load tasks")
         }.onEach { state ->
             _uiState.value = state
         }.launchIn(viewModelScope)
@@ -71,6 +86,10 @@ class AssignmentListViewModel @Inject constructor(
 
     fun selectFilter(filter: AssignmentFilter) {
         _selectedFilter.value = filter
+    }
+
+    fun selectType(type: TaskType?) {
+        _selectedType.value = type
     }
 
     fun cycleStatus(assignment: AssignmentEntity) {
@@ -110,7 +129,14 @@ class AssignmentListViewModel @Inject constructor(
         }
     }
 
-    fun createAssignment(subjectId: Long, title: String, description: String?, deadline: Long, priority: String) {
+    fun createAssignment(
+        subjectId: Long,
+        title: String,
+        description: String?,
+        deadline: Long,
+        priority: String,
+        taskType: TaskType = TaskType.ASSIGNMENT
+    ) {
         viewModelScope.launch {
             val assignment = AssignmentEntity(
                 subjectId = subjectId,
@@ -119,7 +145,8 @@ class AssignmentListViewModel @Inject constructor(
                 deadline = deadline,
                 priority = priority,
                 status = AssignmentEntity.STATUS_PENDING,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                taskType = taskType.name
             )
             createAssignmentUseCase(assignment)
         }

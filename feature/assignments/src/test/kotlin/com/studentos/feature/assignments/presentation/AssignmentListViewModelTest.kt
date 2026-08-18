@@ -49,7 +49,9 @@ class AssignmentListViewModelTest {
         override suspend fun update(subject: SubjectEntity) = error("Not needed")
         override suspend fun rename(id: Long, newName: String) = error("Not needed")
         override suspend fun archive(id: Long, archivedAt: Long) = error("Not needed")
-        override fun getActiveSubjects(): Flow<List<SubjectEntity>> = error("Not needed")
+        override fun getActiveSubjects(): Flow<List<SubjectEntity>> = flowOf(
+            listOf(SubjectEntity(id = 1L, name = "Physics"))
+        )
         override fun getAllSubjectsIncludingArchived(): Flow<List<SubjectEntity>> = flowOf(
             listOf(SubjectEntity(id = 1L, name = "Physics"))
         )
@@ -146,5 +148,23 @@ class AssignmentListViewModelTest {
 
         viewModel.selectFilter(AssignmentFilter.OVERDUE)
         assertEquals(AssignmentFilter.OVERDUE, viewModel.selectedFilter.value)
+    }
+
+    @Test
+    fun selectType_updatesSelectedType() = runBlocking {
+        val repo = FakeAssignmentRepository()
+        val dao = FakeSubjectDao()
+        val getUseCase = GetFilteredAssignmentsUseCase(repo)
+        val prioritizeUseCase = GetPrioritizedAssignmentsUseCase(repo)
+        val updateUseCase = UpdateAssignmentStatusUseCase(repo)
+        val createUseCase = CreateAssignmentUseCase(repo)
+
+        val viewModel = AssignmentListViewModel(getUseCase, prioritizeUseCase, updateUseCase, createUseCase, repo, dao)
+
+        viewModel.selectType(com.studentos.feature.assignments.domain.model.TaskType.QUIZ)
+        assertEquals(com.studentos.feature.assignments.domain.model.TaskType.QUIZ, viewModel.selectedType.value)
+
+        viewModel.selectType(null)
+        assertEquals(null, viewModel.selectedType.value)
     }
 }

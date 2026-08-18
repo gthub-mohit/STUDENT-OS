@@ -17,6 +17,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -48,7 +49,9 @@ class WeeklyViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            subjectRepository.cleanupInvalidOcrSubjects()
+            try {
+                subjectRepository.cleanupInvalidOcrSubjects()
+            } catch (_: Throwable) {}
             val thresholdStr = settingsDao.get("attendance_threshold")
             val threshold = thresholdStr?.toIntOrNull() ?: 75
 
@@ -105,6 +108,8 @@ class WeeklyViewModel @Inject constructor(
                         threshold = threshold
                     )
                 }
+            }.catch { error ->
+                _uiState.value = WeeklyUiState.Error(error.message ?: "Failed to load weekly attendance")
             }.collect { state ->
                 _uiState.value = state
             }

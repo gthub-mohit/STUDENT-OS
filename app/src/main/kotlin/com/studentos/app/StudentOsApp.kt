@@ -38,10 +38,15 @@ class StudentOsApp : Application(), Configuration.Provider {
      * enabling Hilt injection in all [androidx.work.ListenableWorker] subclasses.
      */
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
+        get() {
+            val builder = Configuration.Builder()
+                .setMinimumLoggingLevel(android.util.Log.INFO)
+            return if (::workerFactory.isInitialized) {
+                builder.setWorkerFactory(workerFactory).build()
+            } else {
+                builder.build()
+            }
+        }
 
     override fun onCreate() {
         super.onCreate()

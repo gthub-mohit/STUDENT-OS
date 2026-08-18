@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,41 +37,45 @@ class AttendanceAnalyticsViewModel @Inject constructor(
             val thresholdStr = settingsDao.get("attendance_threshold")
             val threshold = thresholdStr?.toIntOrNull() ?: 75
 
-            classEventRepository.getAllAttendanceSummaries().collect { summaries ->
-                var overallPresent = 0
-                var overallAbsent = 0
-                var overallCancelled = 0
-                var overallHoliday = 0
-                var overallExtraPresent = 0
-
-                for (summary in summaries) {
-                    overallPresent += summary.presentCount
-                    overallAbsent += summary.absentCount
-                    overallCancelled += summary.cancelledCount
-                    overallHoliday += summary.holidayCount
-                    overallExtraPresent += summary.extraPresentCount
+            classEventRepository.getAllAttendanceSummaries()
+                .catch { error ->
+                    _uiState.value = AnalyticsUiState.Error(error.message ?: "Failed to load analytics")
                 }
+                .collect { summaries ->
+                    var overallPresent = 0
+                    var overallAbsent = 0
+                    var overallCancelled = 0
+                    var overallHoliday = 0
+                    var overallExtraPresent = 0
 
-                val overallPercentage = AttendanceCalculator.calculatePercentage(
-                    present = overallPresent,
-                    absent = overallAbsent,
-                    cancelled = overallCancelled,
-                    holiday = overallHoliday,
-                    extraPresent = overallExtraPresent
-                )
+                    for (summary in summaries) {
+                        overallPresent += summary.presentCount
+                        overallAbsent += summary.absentCount
+                        overallCancelled += summary.cancelledCount
+                        overallHoliday += summary.holidayCount
+                        overallExtraPresent += summary.extraPresentCount
+                    }
 
-                val totalHeld = overallPresent + overallAbsent + overallExtraPresent
-                val totalAttended = overallPresent + overallExtraPresent
+                    val overallPercentage = AttendanceCalculator.calculatePercentage(
+                        present = overallPresent,
+                        absent = overallAbsent,
+                        cancelled = overallCancelled,
+                        holiday = overallHoliday,
+                        extraPresent = overallExtraPresent
+                    )
 
-                _uiState.value = AnalyticsUiState.Success(
-                    summaries = summaries,
-                    overallPercentage = overallPercentage,
-                    totalHeldCount = totalHeld,
-                    totalPresentCount = totalAttended,
-                    isBelowThreshold = overallPercentage < threshold,
-                    threshold = threshold
-                )
-            }
+                    val totalHeld = overallPresent + overallAbsent + overallExtraPresent
+                    val totalAttended = overallPresent + overallExtraPresent
+
+                    _uiState.value = AnalyticsUiState.Success(
+                        summaries = summaries,
+                        overallPercentage = overallPercentage,
+                        totalHeldCount = totalHeld,
+                        totalPresentCount = totalAttended,
+                        isBelowThreshold = overallPercentage < threshold,
+                        threshold = threshold
+                    )
+                }
         }
     }
 }

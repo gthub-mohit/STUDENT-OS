@@ -288,4 +288,43 @@ class AssignmentRepositoryImplTest {
         val result = repository.attachFile(42L, "content://invalid/stream")
         assertTrue(result is AppResult.Failure)
     }
+
+    @Test
+    fun createAssignment_missingDeadline_returnsValidationError() = runBlocking {
+        val dao = FakeAssignmentDao()
+        val bus = FakeAppEventBus()
+        val context = MinimalTestContext(filesDir)
+        val repository = AssignmentRepositoryImpl(dao, bus, context)
+
+        val newAssignment = AssignmentEntity(
+            subjectId = 1L,
+            title = "Math Quiz",
+            deadline = 0L,
+            createdAt = System.currentTimeMillis(),
+            taskType = "QUIZ"
+        )
+
+        val result = repository.createAssignment(newAssignment)
+        assertTrue(result is AppResult.Failure)
+    }
+
+    @Test
+    fun createAssignment_withCustomTaskType_persistsTaskType() = runBlocking {
+        val dao = FakeAssignmentDao()
+        val bus = FakeAppEventBus()
+        val context = MinimalTestContext(filesDir)
+        val repository = AssignmentRepositoryImpl(dao, bus, context)
+
+        val newAssignment = AssignmentEntity(
+            subjectId = 1L,
+            title = "Compiler Lab Record",
+            deadline = 1755500000000L,
+            createdAt = System.currentTimeMillis(),
+            taskType = "LAB_RECORD"
+        )
+
+        val result = repository.createAssignment(newAssignment)
+        assertTrue(result is AppResult.Success)
+        assertEquals("LAB_RECORD", dao.lastInserted?.taskType)
+    }
 }

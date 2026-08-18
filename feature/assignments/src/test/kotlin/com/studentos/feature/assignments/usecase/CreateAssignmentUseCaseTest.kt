@@ -88,4 +88,42 @@ class CreateAssignmentUseCaseTest {
         assertTrue(result is AppResult.Failure)
         assertTrue((result as AppResult.Failure).reason is AppError.ValidationError)
     }
+
+    @Test
+    fun invoke_missingDeadline_returnsValidationError() = runBlocking {
+        val repo = FakeAssignmentRepository()
+        val useCase = CreateAssignmentUseCase(repo)
+
+        val assignment = AssignmentEntity(
+            subjectId = 1L,
+            title = "Physics Quiz",
+            deadline = 0L,
+            createdAt = System.currentTimeMillis(),
+            taskType = "QUIZ"
+        )
+
+        val result = useCase(assignment)
+        assertTrue(result is AppResult.Failure)
+        assertTrue((result as AppResult.Failure).reason is AppError.ValidationError)
+    }
+
+    @Test
+    fun invoke_validTaskWithQuizTypeAndExactDeadline_succeeds() = runBlocking {
+        val repo = FakeAssignmentRepository()
+        val useCase = CreateAssignmentUseCase(repo)
+
+        val exactDeadline = 1755500000000L
+        val assignment = AssignmentEntity(
+            subjectId = 2L,
+            title = "Data Structures Quiz 1",
+            deadline = exactDeadline,
+            createdAt = System.currentTimeMillis(),
+            taskType = "QUIZ"
+        )
+
+        val result = useCase(assignment)
+        assertTrue(result is AppResult.Success)
+        assertEquals(exactDeadline, repo.createdAssignment?.deadline)
+        assertEquals("QUIZ", repo.createdAssignment?.taskType)
+    }
 }

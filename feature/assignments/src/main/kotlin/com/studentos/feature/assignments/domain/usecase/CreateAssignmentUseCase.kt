@@ -14,10 +14,13 @@ class CreateAssignmentUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(assignment: AssignmentEntity): AppResult<Long> {
         if (assignment.title.isBlank()) {
-            return AppResult.Failure(AppError.ValidationError("Assignment title cannot be empty"))
+            return AppResult.Failure(AppError.ValidationError("Task title cannot be empty"))
         }
         if (assignment.subjectId <= 0L) {
             return AppResult.Failure(AppError.ValidationError("Valid subject must be selected"))
+        }
+        if (assignment.deadline <= 0L) {
+            return AppResult.Failure(AppError.ValidationError("Due date and time are required"))
         }
         return assignmentRepository.createAssignment(assignment)
     }

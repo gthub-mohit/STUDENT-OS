@@ -9,6 +9,7 @@ package com.studentos.feature.intelligence.domain.model
  * @param category Category identifier: "ASSIGNMENT", "CLASS", "CONTEST", "PROJECT"
  * @param actionRoute Navigation destination route (e.g., "assignments/list")
  * @param timestamp Epoch timestamp in milliseconds for sorting nearest items
+ * @param entityId Underlying database entity ID for domain mutation / deduplication
  */
 data class ComingUpItem(
     val id: String,
@@ -16,5 +17,6 @@ data class ComingUpItem(
     val subtitle: String,
     val category: String,
     val actionRoute: String? = null,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val entityId: Long? = null
 )
