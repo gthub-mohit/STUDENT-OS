@@ -75,7 +75,7 @@ class HomeViewModel @Inject constructor(
                 val goalSummary = when {
                     isGenerating -> "Generating today's brief…"
                     total == 0 -> "Tap to view Daily Brief"
-                    completed == total -> "All priorities completed today! 🎉"
+                    completed == total -> "All priorities completed today"
                     else -> "Tap to see today's plan"
                 }
 

@@ -287,4 +287,38 @@ class GetComingUpUseCaseTest {
         assertEquals("Math Class", result[0].title)
         assertEquals("CLASS", result[0].category)
     }
+
+    @Test
+    fun newTaskWithTypeOther_appearsInComingUp() = runTest {
+        val todayFocus = listOf(
+            TodayFocusItem(
+                id = "class_1",
+                title = "Attend CS101",
+                subtitle = "10:00 AM",
+                category = "CLASS",
+                isCompleted = false,
+                entityId = 1L
+            )
+        )
+        val comingUpRepoItems = listOf(
+            ComingUpItem(
+                id = "asgn_up_99",
+                title = "Club Registration Form",
+                subtitle = "Due Friday",
+                category = "OTHER",
+                timestamp = 50000L,
+                entityId = 99L
+            )
+        )
+
+        every { getTodayFocusUseCase() } returns flowOf(todayFocus)
+        every { repository.getComingUpItems() } returns flowOf(comingUpRepoItems)
+
+        val result = getComingUpUseCase().first()
+
+        assertEquals(1, result.size)
+        assertEquals(99L, result[0].entityId)
+        assertEquals("Club Registration Form", result[0].title)
+        assertEquals("OTHER", result[0].category)
+    }
 }

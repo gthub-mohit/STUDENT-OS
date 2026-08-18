@@ -282,7 +282,7 @@ private fun TodaysProgressHeroCard(
                         val progressText = if (uiState.totalPrioritiesCount > 0) {
                             "${uiState.completedPrioritiesCount} / ${uiState.totalPrioritiesCount} priorities completed"
                         } else {
-                            "You're all caught up for today 🎉"
+                            "You're all caught up for today"
                         }
                         Text(
                             text = progressText,

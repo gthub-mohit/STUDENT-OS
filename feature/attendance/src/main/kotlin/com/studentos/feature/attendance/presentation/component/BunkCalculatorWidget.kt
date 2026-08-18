@@ -32,13 +32,13 @@ fun BunkCalculatorWidget(
         Column(modifier = Modifier.padding(14.dp)) {
             if (totalHeld == 0) {
                 Text(
-                    text = "No data yet",
+                    text = "No attendance recorded yet",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Mark your first class",
+                    text = "Mark your first class to see attendance calculations",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )

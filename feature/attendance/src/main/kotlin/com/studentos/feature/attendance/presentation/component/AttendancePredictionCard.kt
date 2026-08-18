@@ -88,7 +88,14 @@ fun AttendancePredictionCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (canSkip > 0) {
+                val totalHeld = present + absent + extraPresent
+                if (totalHeld == 0) {
+                    Text(
+                        text = "No attendance recorded yet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (canSkip > 0) {
                     Text(
                         text = "Can Skip: $canSkip classes",
                         style = MaterialTheme.typography.bodySmall,

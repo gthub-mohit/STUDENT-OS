@@ -162,7 +162,7 @@ fun AttendanceAnalyticsScreen(
 
 fun getAttendanceStatusMessage(overallPercentage: Double, totalHeld: Int): String {
     if (totalHeld == 0) {
-        return "Mark a few classes to see your attendance trend."
+        return "No attendance recorded yet — mark your first class"
     }
     return when {
         overallPercentage >= 90.0 -> "You're comfortably above your target."
@@ -343,7 +343,7 @@ private fun SubjectAnalyticsCard(
             ) {
                 // Status Pill
                 val statusText = when {
-                    !hasData -> "Target: $threshold%"
+                    !hasData -> "No attendance recorded yet"
                     canSkip > 0 -> "Safe — Can skip $canSkip ${if (canSkip == 1) "class" else "classes"}"
                     mustAttend > 0 -> if (isCritical) {
                         "Critical — Must attend $mustAttend ${if (mustAttend == 1) "class" else "classes"}"

@@ -20,7 +20,6 @@ fun TaskTypeBadge(
         TaskType.ASSIGNMENT -> Color(0xFFEDE7F6) to Color(0xFF5E35B1) // Purple
         TaskType.QUIZ -> Color(0xFFFFF3E0) to Color(0xFFE65100) // Orange
         TaskType.LAB_RECORD -> Color(0xFFE0F7FA) to Color(0xFF00838F) // Cyan
-        TaskType.PRACTICAL -> Color(0xFFE8F5E9) to Color(0xFF2E7D32) // Green
         TaskType.OTHER -> Color(0xFFECEFF1) to Color(0xFF455A64) // Blue Grey
     }
 

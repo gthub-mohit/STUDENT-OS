@@ -139,7 +139,7 @@ fun AssignmentListScreen(
                         if (state.prioritizedGroups.isEmpty()) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "No upcoming deadlines 🎉",
+                                    text = "No upcoming deadlines",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -156,11 +156,11 @@ fun AssignmentListScreen(
                     } else {
                         if (state.assignments.isEmpty()) {
                             val emptyMessage = when {
-                                state.currentFilter == AssignmentFilter.TODAY -> "Nothing due today 🎉"
-                                state.currentFilter == AssignmentFilter.PENDING -> "You're all caught up 🎉"
+                                state.currentFilter == AssignmentFilter.TODAY -> "Nothing due today"
+                                state.currentFilter == AssignmentFilter.PENDING -> "You're all caught up"
                                 state.currentTypeFilter == TaskType.QUIZ -> "No quizzes yet."
                                 state.currentTypeFilter == TaskType.LAB_RECORD -> "No lab records yet."
-                                state.currentTypeFilter == TaskType.PRACTICAL -> "No practicals yet."
+                                state.currentTypeFilter == TaskType.OTHER -> "No other tasks yet."
                                 else -> "No tasks match these filters."
                             }
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -172,7 +172,7 @@ fun AssignmentListScreen(
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {

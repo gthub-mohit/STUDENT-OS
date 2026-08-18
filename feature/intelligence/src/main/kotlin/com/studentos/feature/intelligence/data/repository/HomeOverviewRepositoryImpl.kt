@@ -69,7 +69,7 @@ class HomeOverviewRepositoryImpl @Inject constructor(
                         id = "asgn_${assignment.id}",
                         title = "Finish ${assignment.title}",
                         subtitle = subtitle,
-                        category = "ASSIGNMENT",
+                        category = assignment.taskType,
                         isCompleted = isCompleted,
                         actionRoute = "assignments/list",
                         entityId = assignment.id
@@ -119,7 +119,7 @@ class HomeOverviewRepositoryImpl @Inject constructor(
 
     override fun getComingUpItems(): Flow<List<ComingUpItem>> {
         val nowMs = clock.millis()
-        val oneWeekLaterMs = nowMs + (7 * 24 * 3600 * 1000L)
+        val oneWeekLaterMs = nowMs + (14 * 24 * 3600 * 1000L)
         val assignmentsFlow = assignmentDao.getAllAssignments()
         val classEventsFlow = classEventDao.getEventsForWeek(nowMs, oneWeekLaterMs)
         val subjectsFlow = subjectDao.getActiveSubjects()
@@ -128,11 +128,10 @@ class HomeOverviewRepositoryImpl @Inject constructor(
             val subjectMap = subjects.associateBy { it.id }
             val upcoming = mutableListOf<ComingUpItem>()
 
-            // 1. Upcoming pending assignments
+            // 1. Upcoming pending/in-progress assignments and tasks
             assignments
                 .filter { (it.status == AssignmentEntity.STATUS_PENDING || it.status == AssignmentEntity.STATUS_IN_PROGRESS) && it.deadline >= (nowMs - 3600_000L) }
                 .sortedBy { it.deadline }
-                .take(2)
                 .forEach { assignment ->
                     val subjectName = subjectMap[assignment.subjectId]?.name
                     val dueStr = "Due ${formatFriendlyDate(assignment.deadline, clock)}"
@@ -142,7 +141,7 @@ class HomeOverviewRepositoryImpl @Inject constructor(
                             id = "asgn_up_${assignment.id}",
                             title = assignment.title,
                             subtitle = subtitle,
-                            category = "ASSIGNMENT",
+                            category = assignment.taskType,
                             actionRoute = "assignments/list",
                             timestamp = assignment.deadline,
                             entityId = assignment.id
@@ -154,7 +153,6 @@ class HomeOverviewRepositoryImpl @Inject constructor(
             classEvents
                 .filter { it.scheduledAt > nowMs && it.status != "CANCELLED" }
                 .sortedBy { it.scheduledAt }
-                .take(2)
                 .forEach { event ->
                     val subjectName = subjectMap[event.subjectId]?.name ?: "Class #${event.subjectId}"
                     val timeStr = "${formatFriendlyDate(event.scheduledAt, clock)} · ${formatEventTime(event.scheduledAt, clock)}"
@@ -171,8 +169,8 @@ class HomeOverviewRepositoryImpl @Inject constructor(
                     )
                 }
 
-            // Sort all by timestamp ascending and take top 3
-            upcoming.sortedBy { it.timestamp }.take(3)
+            // Sort all by timestamp ascending
+            upcoming.sortedBy { it.timestamp }
         }
     }
 

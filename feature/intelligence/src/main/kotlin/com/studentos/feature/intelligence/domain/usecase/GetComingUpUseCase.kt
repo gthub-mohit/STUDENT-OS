@@ -24,10 +24,12 @@ class GetComingUpUseCase @Inject constructor(
         ) { comingUpItems, todayFocusItems ->
             val todayFocusKeys = todayFocusItems.mapNotNull { it.toEntityKey() }.toSet()
 
-            comingUpItems.filterNot { item ->
-                val itemKey = item.toEntityKey()
-                itemKey != null && todayFocusKeys.contains(itemKey)
-            }
+            comingUpItems
+                .filterNot { item ->
+                    val itemKey = item.toEntityKey()
+                    itemKey != null && todayFocusKeys.contains(itemKey)
+                }
+                .take(3)
         }
     }
 
@@ -46,7 +48,7 @@ class GetComingUpUseCase @Inject constructor(
     private fun normalizeCategory(category: String): String {
         return when (category.uppercase()) {
             "ATTENDANCE", "CLASS" -> "CLASS"
-            "ASSIGNMENT", "TASK" -> "ASSIGNMENT"
+            "ASSIGNMENT", "TASK", "QUIZ", "LAB_RECORD", "PRACTICAL", "OTHER" -> "ASSIGNMENT"
             "DSA", "CODING" -> "DSA"
             "PROJECT", "PROJECTS" -> "PROJECT"
             else -> category.uppercase()

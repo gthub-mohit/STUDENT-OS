@@ -160,7 +160,7 @@ class AttendanceAnalyticsViewModelTest {
     @Test
     fun getAttendanceStatusMessage_deterministicContextualMessages() {
         val zeroData = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(0.0, 0)
-        assertEquals("Mark a few classes to see your attendance trend.", zeroData)
+        assertEquals("No attendance recorded yet — mark your first class", zeroData)
 
         val above90 = com.studentos.feature.attendance.presentation.screen.getAttendanceStatusMessage(92.5, 20)
         assertEquals("You're comfortably above your target.", above90)

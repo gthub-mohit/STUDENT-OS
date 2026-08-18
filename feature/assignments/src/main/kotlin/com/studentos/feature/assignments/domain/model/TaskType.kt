@@ -7,7 +7,6 @@ enum class TaskType {
     ASSIGNMENT,
     QUIZ,
     LAB_RECORD,
-    PRACTICAL,
     OTHER;
 
     val displayName: String
@@ -15,7 +14,6 @@ enum class TaskType {
             ASSIGNMENT -> "Assignment"
             QUIZ -> "Quiz"
             LAB_RECORD -> "Lab Record"
-            PRACTICAL -> "Practical"
             OTHER -> "Other"
         }
 
@@ -23,8 +21,7 @@ enum class TaskType {
         fun fromString(value: String?): TaskType {
             return when (value?.trim()?.uppercase()) {
                 "QUIZ" -> QUIZ
-                "LAB_RECORD", "LAB", "LABRECORD", "LAB RECORD" -> LAB_RECORD
-                "PRACTICAL" -> PRACTICAL
+                "LAB_RECORD", "LAB", "LABRECORD", "LAB RECORD", "PRACTICAL" -> LAB_RECORD
                 "OTHER" -> OTHER
                 else -> ASSIGNMENT
             }
