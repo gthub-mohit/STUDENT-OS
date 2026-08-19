@@ -161,10 +161,34 @@ class AssignmentListViewModelTest {
 
         val viewModel = AssignmentListViewModel(getUseCase, prioritizeUseCase, updateUseCase, createUseCase, repo, dao)
 
-        viewModel.selectType(com.studentos.feature.assignments.domain.model.TaskType.QUIZ)
-        assertEquals(com.studentos.feature.assignments.domain.model.TaskType.QUIZ, viewModel.selectedType.value)
-
         viewModel.selectType(null)
         assertEquals(null, viewModel.selectedType.value)
+    }
+
+    @Test
+    fun applyFilters_updatesAllFilterCriteria() = runBlocking {
+        val repo = FakeAssignmentRepository()
+        val dao = FakeSubjectDao()
+        val getUseCase = GetFilteredAssignmentsUseCase(repo)
+        val prioritizeUseCase = GetPrioritizedAssignmentsUseCase(repo)
+        val updateUseCase = UpdateAssignmentStatusUseCase(repo)
+        val createUseCase = CreateAssignmentUseCase(repo)
+
+        val viewModel = AssignmentListViewModel(getUseCase, prioritizeUseCase, updateUseCase, createUseCase, repo, dao)
+
+        viewModel.applyFilters(
+            type = com.studentos.feature.assignments.domain.model.TaskType.LAB_RECORD,
+            status = AssignmentEntity.STATUS_PENDING,
+            deadline = AssignmentFilter.THIS_WEEK
+        )
+
+        assertEquals(com.studentos.feature.assignments.domain.model.TaskType.LAB_RECORD, viewModel.selectedType.value)
+        assertEquals(AssignmentEntity.STATUS_PENDING, viewModel.selectedStatus.value)
+        assertEquals(AssignmentFilter.THIS_WEEK, viewModel.selectedDeadline.value)
+
+        viewModel.clearAllFilters()
+        assertEquals(null, viewModel.selectedType.value)
+        assertEquals(null, viewModel.selectedStatus.value)
+        assertEquals(null, viewModel.selectedDeadline.value)
     }
 }

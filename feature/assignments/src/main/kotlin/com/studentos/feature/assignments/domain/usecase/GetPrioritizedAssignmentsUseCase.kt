@@ -2,6 +2,7 @@ package com.studentos.feature.assignments.domain.usecase
 
 import com.studentos.core.database.entity.AssignmentEntity
 import com.studentos.feature.assignments.domain.model.PrioritizedAssignmentGroup
+import com.studentos.feature.assignments.domain.model.TaskType
 import com.studentos.feature.assignments.domain.model.UrgencyCategory
 import com.studentos.feature.assignments.domain.repository.AssignmentRepository
 import kotlinx.coroutines.flow.Flow
@@ -18,11 +19,18 @@ class GetPrioritizedAssignmentsUseCase @Inject constructor(
     private val repository: AssignmentRepository
 ) {
     operator fun invoke(
+        taskType: TaskType? = null,
+        statusFilter: String? = null,
         nowEpoch: Long = System.currentTimeMillis(),
         zoneId: ZoneId = ZoneId.systemDefault()
     ): Flow<List<PrioritizedAssignmentGroup>> {
         return repository.getAllAssignments().map { assignments ->
-            categorizeAndPrioritize(assignments, nowEpoch, zoneId)
+            val filtered = assignments.filter { entity ->
+                val matchesType = taskType == null || TaskType.fromString(entity.taskType) == taskType
+                val matchesStatus = statusFilter == null || entity.status.equals(statusFilter, ignoreCase = true)
+                matchesType && matchesStatus
+            }
+            categorizeAndPrioritize(filtered, nowEpoch, zoneId)
         }
     }
 

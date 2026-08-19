@@ -18,11 +18,37 @@ class GetFilteredAssignmentsUseCase @Inject constructor(
     private val repository: AssignmentRepository
 ) {
     operator fun invoke(
-        filter: AssignmentFilter,
+        filter: AssignmentFilter = AssignmentFilter.ALL,
         taskType: TaskType? = null,
+        statusFilter: String? = null,
+        deadlineFilter: AssignmentFilter? = null,
         nowEpoch: Long = System.currentTimeMillis(),
         zoneId: ZoneId = ZoneId.systemDefault()
     ): Flow<List<AssignmentEntity>> {
+        if (statusFilter != null || (deadlineFilter != null && deadlineFilter != AssignmentFilter.ALL)) {
+            return repository.getAllAssignments().map { list ->
+                list.filter { entity ->
+                    val matchesType = taskType == null || TaskType.fromString(entity.taskType) == taskType
+                    val matchesStatus = statusFilter == null || entity.status.equals(statusFilter, ignoreCase = true)
+                    val matchesDeadline = if (deadlineFilter == null || deadlineFilter == AssignmentFilter.ALL) {
+                        true
+                    } else {
+                        val zonedDateTime = Instant.ofEpochMilli(nowEpoch).atZone(zoneId)
+                        val startOfDay = zonedDateTime.toLocalDate().atStartOfDay(zoneId).toInstant().toEpochMilli()
+                        val endOfDay = zonedDateTime.toLocalDate().atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                        val endOfWeek = zonedDateTime.toLocalDate().plusDays(6).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                        when (deadlineFilter) {
+                            AssignmentFilter.TODAY -> entity.deadline in startOfDay..endOfDay
+                            AssignmentFilter.THIS_WEEK -> entity.deadline in startOfDay..endOfWeek
+                            AssignmentFilter.OVERDUE -> entity.deadline < nowEpoch && entity.status != AssignmentEntity.STATUS_COMPLETED && entity.status != AssignmentEntity.STATUS_SUBMITTED
+                            else -> true
+                        }
+                    }
+                    matchesType && matchesStatus && matchesDeadline
+                }.sortedBy { it.deadline }
+            }
+        }
+
         val baseFlow = when (filter) {
             AssignmentFilter.ALL -> {
                 repository.getAllAssignments()

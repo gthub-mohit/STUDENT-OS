@@ -12,10 +12,13 @@ sealed interface AssignmentListUiState {
     data class Success(
         val assignments: List<AssignmentEntity>,
         val prioritizedGroups: List<PrioritizedAssignmentGroup> = emptyList(),
+        val totalCountInDb: Int = 0,
         val subjectsMap: Map<Long, String> = emptyMap(),
         val activeSubjects: List<SubjectEntity> = emptyList(),
-        val currentFilter: AssignmentFilter = AssignmentFilter.TODAY,
+        val currentFilter: AssignmentFilter = AssignmentFilter.ALL,
         val currentTypeFilter: TaskType? = null,
+        val currentStatusFilter: String? = null,
+        val currentDeadlineFilter: AssignmentFilter? = null,
         val assignmentToDelete: AssignmentEntity? = null
     ) : AssignmentListUiState
 

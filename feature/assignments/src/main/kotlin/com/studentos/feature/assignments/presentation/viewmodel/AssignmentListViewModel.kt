@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.entity.AssignmentEntity
+import com.studentos.core.database.entity.SubjectEntity
 import com.studentos.feature.assignments.domain.model.AssignmentFilter
 import com.studentos.feature.assignments.domain.model.TaskType
 import com.studentos.feature.assignments.domain.repository.AssignmentRepository
@@ -35,11 +36,17 @@ class AssignmentListViewModel @Inject constructor(
     private val subjectDao: SubjectDao
 ) : ViewModel() {
 
-    private val _selectedFilter = MutableStateFlow(AssignmentFilter.TODAY)
+    private val _selectedFilter = MutableStateFlow(AssignmentFilter.ALL)
     val selectedFilter: StateFlow<AssignmentFilter> = _selectedFilter.asStateFlow()
 
     private val _selectedType = MutableStateFlow<TaskType?>(null)
     val selectedType: StateFlow<TaskType?> = _selectedType.asStateFlow()
+
+    private val _selectedStatus = MutableStateFlow<String?>(null)
+    val selectedStatus: StateFlow<String?> = _selectedStatus.asStateFlow()
+
+    private val _selectedDeadline = MutableStateFlow<AssignmentFilter?>(null)
+    val selectedDeadline: StateFlow<AssignmentFilter?> = _selectedDeadline.asStateFlow()
 
     private val _assignmentToDelete = MutableStateFlow<AssignmentEntity?>(null)
 
@@ -52,29 +59,61 @@ class AssignmentListViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeAssignments() {
-        val filterAndTypeFlow = combine(_selectedFilter, _selectedType) { filter, type -> filter to type }
-        val subjectsFlow = combine(
+        val filterCriteriaFlow = combine(
+            _selectedFilter,
+            _selectedType,
+            _selectedStatus,
+            _selectedDeadline
+        ) { filter, type, status, deadline ->
+            FilterCriteria(filter, type, status, deadline)
+        }
+
+        val filteredAssignmentsFlow = filterCriteriaFlow.flatMapLatest { criteria ->
+            getFilteredAssignmentsUseCase(
+                filter = criteria.filter,
+                taskType = criteria.type,
+                statusFilter = criteria.status,
+                deadlineFilter = criteria.deadline
+            )
+        }
+
+        val prioritizedGroupsFlow = filterCriteriaFlow.flatMapLatest { criteria ->
+            getPrioritizedAssignmentsUseCase(
+                taskType = criteria.type,
+                statusFilter = criteria.status
+            )
+        }
+
+        val metaDataFlow = combine(
             subjectDao.getAllSubjectsIncludingArchived(),
-            subjectDao.getActiveSubjects()
-        ) { all, active -> all to active }
+            subjectDao.getActiveSubjects(),
+            repository.getAllAssignments(),
+            filterCriteriaFlow
+        ) { allSubjects, activeSubjects, allDbAssignments, criteria ->
+            MetaData(
+                subjectsMap = allSubjects.associate { it.id to it.name },
+                activeSubjects = activeSubjects,
+                totalCountInDb = allDbAssignments.size,
+                criteria = criteria
+            )
+        }
 
         combine(
-            filterAndTypeFlow.flatMapLatest { (filter, type) ->
-                getFilteredAssignmentsUseCase(filter, type)
-            },
-            getPrioritizedAssignmentsUseCase(),
-            subjectsFlow,
-            filterAndTypeFlow,
+            filteredAssignmentsFlow,
+            prioritizedGroupsFlow,
+            metaDataFlow,
             _assignmentToDelete
-        ) { filteredAssignments, prioritizedGroups, (allSubjects, activeSubjects), (filter, type), toDelete ->
-            val map = allSubjects.associate { it.id to it.name }
+        ) { filteredAssignments, prioritizedGroups, meta, toDelete ->
             AssignmentListUiState.Success(
                 assignments = filteredAssignments,
                 prioritizedGroups = prioritizedGroups,
-                subjectsMap = map,
-                activeSubjects = activeSubjects,
-                currentFilter = filter,
-                currentTypeFilter = type,
+                totalCountInDb = meta.totalCountInDb,
+                subjectsMap = meta.subjectsMap,
+                activeSubjects = meta.activeSubjects,
+                currentFilter = meta.criteria.filter,
+                currentTypeFilter = meta.criteria.type,
+                currentStatusFilter = meta.criteria.status,
+                currentDeadlineFilter = meta.criteria.deadline,
                 assignmentToDelete = toDelete
             )
         }.catch { error ->
@@ -84,12 +123,53 @@ class AssignmentListViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
+    private data class MetaData(
+        val subjectsMap: Map<Long, String>,
+        val activeSubjects: List<SubjectEntity>,
+        val totalCountInDb: Int,
+        val criteria: FilterCriteria
+    )
+
+    private data class FilterCriteria(
+        val filter: AssignmentFilter,
+        val type: TaskType?,
+        val status: String?,
+        val deadline: AssignmentFilter?
+    )
+
     fun selectFilter(filter: AssignmentFilter) {
         _selectedFilter.value = filter
     }
 
     fun selectType(type: TaskType?) {
         _selectedType.value = type
+    }
+
+    fun applyFilters(type: TaskType?, status: String?, deadline: AssignmentFilter?) {
+        _selectedType.value = type
+        _selectedStatus.value = status
+        _selectedDeadline.value = deadline
+        _selectedFilter.value = deadline ?: AssignmentFilter.ALL
+    }
+
+    fun clearAllFilters() {
+        _selectedType.value = null
+        _selectedStatus.value = null
+        _selectedDeadline.value = null
+        _selectedFilter.value = AssignmentFilter.ALL
+    }
+
+    fun clearTypeFilter() {
+        _selectedType.value = null
+    }
+
+    fun clearStatusFilter() {
+        _selectedStatus.value = null
+    }
+
+    fun clearDeadlineFilter() {
+        _selectedDeadline.value = null
+        _selectedFilter.value = AssignmentFilter.ALL
     }
 
     fun cycleStatus(assignment: AssignmentEntity) {

@@ -120,4 +120,28 @@ class GetFilteredAssignmentsUseCaseTest {
         val allTypesResult = useCase(filter = AssignmentFilter.PENDING, taskType = null).first()
         assertEquals(3, allTypesResult.size)
     }
+
+    @Test
+    fun multiCriteriaFilter_appliesStatusDeadlineAndType() = runBlocking {
+        val now = 100_000_000L
+        val mixedList = listOf(
+            AssignmentEntity(1L, 1L, "Math Assignment", deadline = now + 1000L, status = AssignmentEntity.STATUS_PENDING, createdAt = 1000L, taskType = "ASSIGNMENT"),
+            AssignmentEntity(2L, 1L, "Math Quiz", deadline = now + 1000L, status = AssignmentEntity.STATUS_PENDING, createdAt = 1000L, taskType = "QUIZ"),
+            AssignmentEntity(3L, 1L, "Completed Quiz", deadline = now + 1000L, status = AssignmentEntity.STATUS_COMPLETED, createdAt = 1000L, taskType = "QUIZ")
+        )
+
+        val repo = object : AssignmentRepository by FakeAssignmentRepository() {
+            override fun getAllAssignments(): Flow<List<AssignmentEntity>> = flowOf(mixedList)
+        }
+        val useCase = GetFilteredAssignmentsUseCase(repo)
+
+        val result = useCase(
+            taskType = com.studentos.feature.assignments.domain.model.TaskType.QUIZ,
+            statusFilter = AssignmentEntity.STATUS_PENDING,
+            nowEpoch = now
+        ).first()
+
+        assertEquals(1, result.size)
+        assertEquals("Math Quiz", result[0].title)
+    }
 }
