@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,14 +35,19 @@ fun TaskItem(
     onSetNextAction: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isParallelMode: Boolean = false,
+    stepNumber: Int? = null
 ) {
+    val isPrimaryFocus = task.isNextAction && !task.isCompleted
+    val isSequentialCurrent = !isParallelMode && !task.isCompleted && (stepNumber == 1 || isPrimaryFocus)
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (task.isNextAction && !task.isCompleted) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            containerColor = if (isPrimaryFocus || isSequentialCurrent) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
@@ -67,31 +73,76 @@ fun TaskItem(
                 Text(
                     text = task.title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (task.isNextAction && !task.isCompleted) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if ((isPrimaryFocus || isSequentialCurrent) && !task.isCompleted) FontWeight.Bold else FontWeight.Normal,
                     textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
                     color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
 
-                if (task.isNextAction && !task.isCompleted) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    ) {
-                        Text(
-                            text = "Next Action",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                if (!task.isCompleted) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    if (!isParallelMode) {
+                        // Sequential Mode
+                        if (stepNumber == 1 || isPrimaryFocus) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Text(
+                                    text = "Current · Step 1",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        } else if (stepNumber != null && stepNumber > 1) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                Text(
+                                    text = "Step $stepNumber · Queued",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        // Parallel Mode
+                        if (isPrimaryFocus) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Text(
+                                    text = "Primary Focus",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "Actionable",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            if (!task.isCompleted) {
+            if (!task.isCompleted && isParallelMode) {
                 IconButton(onClick = onSetNextAction) {
                     Icon(
                         imageVector = Icons.Default.Star,
-                        contentDescription = "Set Next Action",
+                        contentDescription = "Set Primary Focus",
                         tint = if (task.isNextAction) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }

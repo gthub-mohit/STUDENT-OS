@@ -104,8 +104,8 @@ fun MilestoneScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { (uiState.progressPercentage / 100f).coerceIn(0f, 1f) },
+                    com.studentos.feature.projects.presentation.component.ProjectProgressBar(
+                        progress = (uiState.progressPercentage / 100f).coerceIn(0f, 1f),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -180,7 +180,7 @@ fun MilestoneScreen(
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(

@@ -15,7 +15,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +60,7 @@ fun ProjectCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // 1. Project Name & Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -99,18 +99,9 @@ fun ProjectCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            if (!project.nextActionTitle.isNullOrEmpty()) {
-                Text(
-                    text = "Next: ${project.nextActionTitle}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
+            // 2. Progress Section: Text + Accurate Progress Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -119,6 +110,7 @@ fun ProjectCard(
                 Text(
                     text = "Progress: ${project.progressPercentage.toInt()}% (${project.completedTasks}/${project.totalTasks} tasks)",
                     style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -133,17 +125,27 @@ fun ProjectCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            LinearProgressIndicator(
-                progress = { project.progressPercentage / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp),
+            ProjectProgressBar(
+                progress = project.progressPercentage / 100f,
+                height = 6.dp,
                 color = if (isInactive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // 3. Next Action (Prominent below Progress)
+            if (!project.nextActionTitle.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Next: ${project.nextActionTitle}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // 4. Actions: Edit and Archive/Restore
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,

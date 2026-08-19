@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.studentos.feature.projects.domain.model.ProjectTaskDomain
 import com.studentos.feature.projects.presentation.component.CreateTaskDialog
+import com.studentos.feature.projects.presentation.component.ProjectProgressBar
 import com.studentos.feature.projects.presentation.component.TaskItem
 import com.studentos.feature.projects.presentation.state.ProjectTaskUiState
 
@@ -53,10 +57,21 @@ fun ProjectTaskScreen(
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val totalTasks = uiState.tasks.size
+    val completedCount = uiState.completedTasks.size
+    val progressFraction = if (totalTasks > 0) completedCount.toFloat() / totalTasks.toFloat() else 0f
+    val progressPct = (progressFraction * 100f).toInt()
+
+    val nextActionTask = if (uiState.isParallelMode) {
+        uiState.activeNextAction ?: uiState.pendingTasks.firstOrNull()
+    } else {
+        uiState.pendingTasks.firstOrNull()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = uiState.project?.title ?: "Project Details") },
+                title = { Text(text = uiState.project?.title ?: "Project Tasks") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -79,17 +94,19 @@ fun ProjectTaskScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // 1. Mode Selector Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Mode:",
+                    text = "Mode",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -103,6 +120,68 @@ fun ProjectTaskScreen(
                         onClick = { onModeToggle(true) },
                         label = { Text("Parallel") }
                     )
+                }
+            }
+
+            // 2. Progress & Next Action Header Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Progress: $progressPct%",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "$completedCount/$totalTasks tasks",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    ProjectProgressBar(
+                        progress = progressFraction,
+                        height = 6.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+
+                    if (nextActionTask != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (uiState.isParallelMode) "Next (Focus): " else "Next (Step 1): ",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = nextActionTask.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
             }
 
@@ -175,25 +254,27 @@ fun ProjectTaskScreen(
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             if (uiState.pendingTasks.isNotEmpty()) {
                                 item {
                                     Text(
-                                        text = "Pending Tasks (${uiState.pendingTasks.size})",
+                                        text = if (uiState.isParallelMode) "Actionable Tasks (${uiState.pendingTasks.size})" else "Sequential Tasks (${uiState.pendingTasks.size})",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(vertical = 4.dp)
                                     )
                                 }
-                                items(
+                                itemsIndexed(
                                     items = uiState.pendingTasks,
-                                    key = { it.id }
-                                ) { task ->
+                                    key = { _, task -> task.id }
+                                ) { index, task ->
                                     TaskItem(
                                         task = task,
+                                        isParallelMode = uiState.isParallelMode,
+                                        stepNumber = if (!uiState.isParallelMode) index + 1 else null,
                                         onToggleCompletion = { onToggleTaskCompletion(task) },
                                         onSetNextAction = { onSetNextAction(task.id) },
                                         onEditClick = { onEditTaskClick(task) },
@@ -213,12 +294,14 @@ fun ProjectTaskScreen(
                                         modifier = Modifier.padding(vertical = 4.dp)
                                     )
                                 }
-                                items(
+                                itemsIndexed(
                                     items = uiState.completedTasks,
-                                    key = { it.id }
-                                ) { task ->
+                                    key = { _, task -> task.id }
+                                ) { _, task ->
                                     TaskItem(
                                         task = task,
+                                        isParallelMode = uiState.isParallelMode,
+                                        stepNumber = null,
                                         onToggleCompletion = { onToggleTaskCompletion(task) },
                                         onSetNextAction = {},
                                         onEditClick = { onEditTaskClick(task) },

@@ -62,6 +62,13 @@ fun CreateProjectDialog(
                     value = thresholdText,
                     onValueChange = { thresholdText = it.filter { char -> char.isDigit() } },
                     label = { Text("Inactivity Threshold (Days)") },
+                    supportingText = {
+                        Text(
+                            text = "How long a project can go without activity before it's marked inactive.",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
