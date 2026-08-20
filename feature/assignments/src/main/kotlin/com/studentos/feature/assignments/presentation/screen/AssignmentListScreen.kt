@@ -100,8 +100,11 @@ fun AssignmentListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Create Task")
+            val totalCountInDb = (uiState as? AssignmentListUiState.Success)?.totalCountInDb ?: 0
+            if (totalCountInDb > 0) {
+                FloatingActionButton(onClick = { showCreateDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Create Task")
+                }
             }
         },
         modifier = modifier
@@ -111,80 +114,6 @@ fun AssignmentListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 1. View Mode Toggle (By Status vs By Deadline)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = !isPrioritizedView,
-                    onClick = { isPrioritizedView = false },
-                    label = { Text("By Status") }
-                )
-                FilterChip(
-                    selected = isPrioritizedView,
-                    onClick = { isPrioritizedView = true },
-                    label = { Text("By Deadline") }
-                )
-            }
-
-            // 2. Summary & Filters Trigger Row
-            val currentTaskCount = when (val state = uiState) {
-                is AssignmentListUiState.Success -> {
-                    if (isPrioritizedView) state.prioritizedGroups.sumOf { it.assignments.size }
-                    else state.assignments.size
-                }
-                else -> 0
-            }
-            val countLabel = if (currentTaskCount == 1) "1 task" else "$currentTaskCount tasks"
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = countLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                OutlinedButton(
-                    onClick = { showFilterSheet = true },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text("Filters")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Filters",
-                        modifier = Modifier.height(18.dp)
-                    )
-                    if (activeFiltersCount > 0) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Badge {
-                            Text("$activeFiltersCount")
-                        }
-                    }
-                }
-            }
-
-            // 3. Active Removable Filter Chips (only when filters are active)
-            ActiveFilterChips(
-                selectedType = selectedType,
-                selectedStatus = selectedStatus,
-                selectedDeadline = selectedDeadline,
-                onRemoveType = { viewModel.clearTypeFilter() },
-                onRemoveStatus = { viewModel.clearStatusFilter() },
-                onRemoveDeadline = { viewModel.clearDeadlineFilter() }
-            )
-
-            // 4. Content / Lists / Empty States
             when (val state = uiState) {
                 is AssignmentListUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -197,58 +126,125 @@ fun AssignmentListScreen(
                     }
                 }
                 is AssignmentListUiState.Success -> {
-                    val isEntirelyEmpty = state.totalCountInDb == 0
-
-                    if (isEntirelyEmpty) {
+                    if (state.totalCountInDb == 0) {
+                        // 0 tasks total in DB: Hide View Mode Toggle, Filters control, and FAB.
                         TaskEmptyState(
-                            title = "Nothing on your plate yet 🎉",
+                            title = "Nothing on your plate yet",
                             subtitle = "Add your first task and we'll keep track\nof the deadline for you.",
-                            onAddTask = { showCreateDialog = true }
+                            onAddTask = { showCreateDialog = true },
+                            onClearFilters = null
                         )
-                    } else if (isPrioritizedView) {
-                        if (state.prioritizedGroups.isEmpty()) {
-                            TaskEmptyState(
-                                title = "No upcoming deadlines 🎉",
-                                subtitle = "You're clear for now.",
-                                onAddTask = { showCreateDialog = true },
-                                onClearFilters = if (activeFiltersCount > 0) {
-                                    { viewModel.clearAllFilters() }
-                                } else null
+                    } else {
+                        // Tasks exist in DB: Show View Mode Toggle, Summary & Filters, and Task List
+                        // 1. View Mode Toggle (By Status vs By Deadline)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = !isPrioritizedView,
+                                onClick = { isPrioritizedView = false },
+                                label = { Text("By Status") }
                             )
-                        } else {
-                            PrioritizedAssignmentList(
-                                groups = state.prioritizedGroups,
-                                subjectsMap = state.subjectsMap,
-                                onAssignmentClick = onNavigateToDetail,
-                                onDeleteClick = { viewModel.requestDelete(it) },
-                                onStatusClick = { viewModel.cycleStatus(it) }
+                            FilterChip(
+                                selected = isPrioritizedView,
+                                onClick = { isPrioritizedView = true },
+                                label = { Text("By Deadline") }
                             )
                         }
-                    } else {
-                        if (state.assignments.isEmpty()) {
-                            TaskEmptyState(
-                                title = "No tasks here 🎉",
-                                subtitle = "Try another filter or add a new task.",
-                                onAddTask = { showCreateDialog = true },
-                                onClearFilters = if (activeFiltersCount > 0) {
-                                    { viewModel.clearAllFilters() }
-                                } else null
+
+                        // 2. Summary & Filters Trigger Row
+                        val currentTaskCount = if (isPrioritizedView) state.prioritizedGroups.sumOf { it.assignments.size }
+                        else state.assignments.size
+                        val countLabel = if (currentTaskCount == 1) "1 task" else "$currentTaskCount tasks"
+                        val filterButtonLabel = if (activeFiltersCount > 0) "Filters ($activeFiltersCount)" else "Filters"
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = countLabel,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxSize()
+
+                            OutlinedButton(
+                                onClick = { showFilterSheet = true },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                             ) {
-                                items(state.assignments, key = { it.id }) { assignment ->
-                                    val subjectName = state.subjectsMap[assignment.subjectId] ?: "Subject ${assignment.subjectId}"
-                                    AssignmentCard(
-                                        assignment = assignment,
-                                        subjectName = subjectName,
-                                        onClick = { onNavigateToDetail(assignment.id) },
-                                        onDeleteClick = { viewModel.requestDelete(assignment) },
-                                        onStatusClick = { viewModel.cycleStatus(assignment) }
-                                    )
+                                Text(filterButtonLabel)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Filters",
+                                    modifier = Modifier.height(18.dp)
+                                )
+                            }
+                        }
+
+                        // 3. Active Removable Filter Chips (only when filters are active)
+                        ActiveFilterChips(
+                            selectedType = selectedType,
+                            selectedStatus = selectedStatus,
+                            selectedDeadline = selectedDeadline,
+                            onRemoveType = { viewModel.clearTypeFilter() },
+                            onRemoveStatus = { viewModel.clearStatusFilter() },
+                            onRemoveDeadline = { viewModel.clearDeadlineFilter() }
+                        )
+
+                        // 4. Content / Lists / Filtered Empty States
+                        if (isPrioritizedView) {
+                            if (state.prioritizedGroups.isEmpty()) {
+                                TaskEmptyState(
+                                    title = "No upcoming deadlines",
+                                    subtitle = "You're clear for now.",
+                                    onAddTask = null,
+                                    onClearFilters = if (activeFiltersCount > 0) {
+                                        { viewModel.clearAllFilters() }
+                                    } else null
+                                )
+                            } else {
+                                PrioritizedAssignmentList(
+                                    groups = state.prioritizedGroups,
+                                    subjectsMap = state.subjectsMap,
+                                    onAssignmentClick = onNavigateToDetail,
+                                    onDeleteClick = { viewModel.requestDelete(it) },
+                                    onStatusClick = { viewModel.cycleStatus(it) }
+                                )
+                            }
+                        } else {
+                            if (state.assignments.isEmpty()) {
+                                TaskEmptyState(
+                                    title = "No tasks match these filters",
+                                    subtitle = "Try adjusting or clearing your filters.",
+                                    onAddTask = null,
+                                    onClearFilters = if (activeFiltersCount > 0) {
+                                        { viewModel.clearAllFilters() }
+                                    } else null
+                                )
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(state.assignments, key = { it.id }) { assignment ->
+                                        val subjectName = state.subjectsMap[assignment.subjectId] ?: "Subject ${assignment.subjectId}"
+                                        AssignmentCard(
+                                            assignment = assignment,
+                                            subjectName = subjectName,
+                                            onClick = { onNavigateToDetail(assignment.id) },
+                                            onDeleteClick = { viewModel.requestDelete(assignment) },
+                                            onStatusClick = { viewModel.cycleStatus(assignment) }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -303,7 +299,7 @@ fun AssignmentListScreen(
 private fun TaskEmptyState(
     title: String,
     subtitle: String,
-    onAddTask: () -> Unit,
+    onAddTask: (() -> Unit)? = null,
     onClearFilters: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -327,19 +323,23 @@ private fun TaskEmptyState(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(20.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(onClick = onAddTask) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Add Task")
-            }
-            if (onClearFilters != null) {
-                OutlinedButton(onClick = onClearFilters) {
-                    Text("Clear Filters")
+        if (onAddTask != null || onClearFilters != null) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (onAddTask != null) {
+                    Button(onClick = onAddTask) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Add Task")
+                    }
+                }
+                if (onClearFilters != null) {
+                    OutlinedButton(onClick = onClearFilters) {
+                        Text("Clear Filters")
+                    }
                 }
             }
         }
