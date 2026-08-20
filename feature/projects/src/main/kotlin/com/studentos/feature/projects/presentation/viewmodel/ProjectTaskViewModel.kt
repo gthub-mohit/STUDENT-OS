@@ -4,7 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studentos.feature.projects.domain.model.ProjectTaskDomain
+import com.studentos.feature.projects.domain.model.ProjectTaskEngine
+import com.studentos.feature.projects.domain.model.ProjectTaskPriority
+import com.studentos.feature.projects.domain.model.ProjectTaskState
 import com.studentos.feature.projects.domain.repository.ProjectRepository
+import com.studentos.feature.projects.presentation.state.ProjectTaskStatusFilter
 import com.studentos.feature.projects.presentation.state.ProjectTaskUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +65,8 @@ class ProjectTaskViewModel @Inject constructor(
                         project = project,
                         tasks = tasks,
                         isParallelMode = isParallel,
-                        errorMessage = null
+                        errorMessage = null,
+                        currentTimeMs = System.currentTimeMillis()
                     )
                 }
             }
@@ -69,30 +74,60 @@ class ProjectTaskViewModel @Inject constructor(
     }
 
     fun openCreateTaskDialog() {
-        _uiState.update { it.copy(isCreateTaskDialogOpen = true, taskToEdit = null) }
+        _uiState.update { it.copy(isCreateTaskDialogOpen = true, taskToEdit = null, dialogError = null) }
     }
 
     fun openEditTaskDialog(task: ProjectTaskDomain) {
-        _uiState.update { it.copy(isCreateTaskDialogOpen = true, taskToEdit = task) }
+        _uiState.update { it.copy(isCreateTaskDialogOpen = true, taskToEdit = task, dialogError = null) }
     }
 
     fun dismissDialog() {
-        _uiState.update { it.copy(isCreateTaskDialogOpen = false, taskToEdit = null) }
+        _uiState.update { it.copy(isCreateTaskDialogOpen = false, taskToEdit = null, dialogError = null) }
     }
 
-    fun saveTask(title: String) {
+    fun saveTask(
+        title: String,
+        dependencyTaskId: Long? = null,
+        priority: ProjectTaskPriority = ProjectTaskPriority.MEDIUM,
+        deadline: Long? = null
+    ) {
         val trimmed = title.trim()
-        if (trimmed.isEmpty()) return
+        if (trimmed.isEmpty()) {
+            _uiState.update { it.copy(dialogError = "Task title cannot be empty.") }
+            return
+        }
 
         val editTask = _uiState.value.taskToEdit
+        val currentTasks = _uiState.value.tasks
+        val editingId = editTask?.id ?: 0L
+
+        // Circular dependency validation
+        if (dependencyTaskId != null && ProjectTaskEngine.wouldCreateCycle(editingId, dependencyTaskId, currentTasks)) {
+            _uiState.update { it.copy(dialogError = "This dependency would create a circular workflow.") }
+            return
+        }
+
         val currentParallel = _uiState.value.isParallelMode
 
         viewModelScope.launch {
             try {
                 if (editTask == null) {
-                    repository.createTask(projectId, trimmed, currentParallel)
+                    repository.createTask(
+                        projectId = projectId,
+                        title = trimmed,
+                        isParallel = currentParallel,
+                        dependencyTaskId = dependencyTaskId,
+                        priority = priority,
+                        deadline = deadline
+                    )
                 } else {
-                    repository.updateTask(editTask.id, trimmed)
+                    repository.updateTask(
+                        taskId = editTask.id,
+                        title = trimmed,
+                        dependencyTaskId = dependencyTaskId,
+                        priority = priority,
+                        deadline = deadline
+                    )
                 }
                 dismissDialog()
             } catch (e: Exception) {
@@ -104,6 +139,18 @@ class ProjectTaskViewModel @Inject constructor(
     }
 
     fun toggleTaskCompletion(task: ProjectTaskDomain) {
+        val currentMap = _uiState.value.tasksMap
+        val currentState = ProjectTaskEngine.getTaskState(task, currentMap)
+
+        if (!task.isCompleted && currentState == ProjectTaskState.BLOCKED) {
+            val blocker = ProjectTaskEngine.getBlockerTask(task, currentMap)
+            val blockerName = blocker?.title ?: "prerequisite"
+            _uiState.update {
+                it.copy(errorMessage = "Cannot complete '${task.title}'. Waiting for '$blockerName'.")
+            }
+            return
+        }
+
         viewModelScope.launch {
             try {
                 if (task.isCompleted) {
@@ -153,5 +200,21 @@ class ProjectTaskViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun openFilterSheet() {
+        _uiState.update { it.copy(isFilterSheetOpen = true) }
+    }
+
+    fun dismissFilterSheet() {
+        _uiState.update { it.copy(isFilterSheetOpen = false) }
+    }
+
+    fun setStatusFilter(filter: ProjectTaskStatusFilter) {
+        _uiState.update { it.copy(statusFilter = filter, isFilterSheetOpen = false) }
+    }
+
+    fun clearFilters() {
+        _uiState.update { it.copy(statusFilter = ProjectTaskStatusFilter.ALL, isFilterSheetOpen = false) }
     }
 }

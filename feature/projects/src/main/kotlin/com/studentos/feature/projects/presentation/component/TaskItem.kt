@@ -1,17 +1,19 @@
 package com.studentos.feature.projects.presentation.component
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -27,124 +29,147 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.studentos.feature.projects.domain.model.ProjectTaskDomain
+import com.studentos.feature.projects.domain.model.ProjectTaskEngine
+import com.studentos.feature.projects.domain.model.ProjectTaskPriority
+import com.studentos.feature.projects.domain.model.ProjectTaskState
 
 @Composable
 fun TaskItem(
     task: ProjectTaskDomain,
+    taskState: ProjectTaskState,
+    blockerTask: ProjectTaskDomain?,
     onToggleCompletion: () -> Unit,
-    onSetNextAction: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isParallelMode: Boolean = false,
-    stepNumber: Int? = null
+    nowMs: Long = System.currentTimeMillis()
 ) {
-    val isPrimaryFocus = task.isNextAction && !task.isCompleted
-    val isSequentialCurrent = !isParallelMode && !task.isCompleted && (stepNumber == 1 || isPrimaryFocus)
+    val isBlocked = taskState == ProjectTaskState.BLOCKED
+    val isCompleted = task.isCompleted
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isPrimaryFocus || isSequentialCurrent) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-            } else {
-                MaterialTheme.colorScheme.surface
+            containerColor = when {
+                isCompleted -> MaterialTheme.colorScheme.surfaceContainerLowest
+                isBlocked -> MaterialTheme.colorScheme.surfaceContainerLow
+                else -> MaterialTheme.colorScheme.surface
             }
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isCompleted) 0.dp else 1.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = task.isCompleted,
-                onCheckedChange = { onToggleCompletion() }
-            )
+            if (isBlocked) {
+                IconButton(
+                    onClick = onToggleCompletion,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Task Blocked",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            } else {
+                Checkbox(
+                    checked = isCompleted,
+                    onCheckedChange = { onToggleCompletion() }
+                )
+            }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = task.title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if ((isPrimaryFocus || isSequentialCurrent) && !task.isCompleted) FontWeight.Bold else FontWeight.Normal,
-                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    fontWeight = if (taskState == ProjectTaskState.AVAILABLE) FontWeight.SemiBold else FontWeight.Normal,
+                    textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                    color = when {
+                        isCompleted -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        isBlocked -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
                 )
 
-                if (!task.isCompleted) {
+                // Blocker Subtitle (for blocked tasks)
+                if (isBlocked) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    if (!isParallelMode) {
-                        // Sequential Mode
-                        if (stepNumber == 1 || isPrimaryFocus) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.primary
-                            ) {
-                                Text(
-                                    text = "Current · Step 1",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary
+                    val blockerName = blockerTask?.title ?: "Prerequisite task"
+                    Text(
+                        text = "Waiting for: \"$blockerName\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Badges Row (Priority + Deadline)
+                val deadlineContext = ProjectTaskEngine.formatDeadlineContext(task.deadline, nowMs)
+                val hasPriorityBadge = !isCompleted && task.priority != ProjectTaskPriority.MEDIUM
+                val hasDeadlineBadge = !isCompleted && deadlineContext != null
+
+                if (hasPriorityBadge || hasDeadlineBadge) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (hasPriorityBadge) {
+                            val (bgColor, textColor, label) = when (task.priority) {
+                                ProjectTaskPriority.HIGH -> Triple(
+                                    MaterialTheme.colorScheme.errorContainer,
+                                    MaterialTheme.colorScheme.onErrorContainer,
+                                    "High Priority"
+                                )
+                                ProjectTaskPriority.LOW -> Triple(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                    "Low Priority"
+                                )
+                                else -> Triple(
+                                    MaterialTheme.colorScheme.secondaryContainer,
+                                    MaterialTheme.colorScheme.onSecondaryContainer,
+                                    "Medium"
                                 )
                             }
-                        } else if (stepNumber != null && stepNumber > 1) {
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                color = bgColor
                             ) {
                                 Text(
-                                    text = "Step $stepNumber · Queued",
+                                    text = label,
                                     style = MaterialTheme.typography.labelSmall,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = textColor,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
-                    } else {
-                        // Parallel Mode
-                        if (isPrimaryFocus) {
+
+                        if (deadlineContext != null) {
+                            val isOverdue = deadlineContext == "Overdue"
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.primary
+                                color = if (isOverdue) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
-                                    text = "Primary Focus",
+                                    text = deadlineContext,
                                     style = MaterialTheme.typography.labelSmall,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
-                        } else {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer
-                            ) {
-                                Text(
-                                    text = "Actionable",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    color = if (isOverdue) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
                     }
-                }
-            }
-
-            if (!task.isCompleted && isParallelMode) {
-                IconButton(onClick = onSetNextAction) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Set Primary Focus",
-                        tint = if (task.isNextAction) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                    )
                 }
             }
 

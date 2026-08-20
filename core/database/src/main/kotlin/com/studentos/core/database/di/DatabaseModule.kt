@@ -25,7 +25,10 @@ import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.dao.TimetableSlotDao
 import com.studentos.core.database.migration.MIGRATION_1_2
 import com.studentos.core.database.migration.MIGRATION_2_3
+import com.studentos.core.database.migration.MIGRATION_3_4
 import com.studentos.core.database.migration.MIGRATION_1_3
+import com.studentos.core.database.migration.MIGRATION_2_4
+import com.studentos.core.database.migration.MIGRATION_1_4
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,8 +55,15 @@ object DatabaseModule {
         )
             // Enable Write-Ahead Logging (WAL mode) for concurrency and performance
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_1_3)
-            .fallbackToDestructiveMigrationOnDowngrade()
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_1_3,
+                MIGRATION_2_4,
+                MIGRATION_1_4
+            )
+            .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)

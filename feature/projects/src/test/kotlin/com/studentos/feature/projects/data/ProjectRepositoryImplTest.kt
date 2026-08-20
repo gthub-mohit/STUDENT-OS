@@ -122,6 +122,49 @@ class ProjectRepositoryImplTest {
     }
 
     @Test
+    fun createTask_withDependencyAndPriority_insertsCorrectEntity() = runTest {
+        coEvery { projectTaskDao.getMaxSortOrder(1L) } returns 1
+        every { projectTaskDao.getNextAction(1L) } returns flowOf(mockk())
+        coEvery { projectTaskDao.insert(any()) } returns 202L
+
+        val taskId = repository.createTask(
+            projectId = 1L,
+            title = "Assemble Circuit",
+            isParallel = false,
+            dependencyTaskId = 10L,
+            priority = com.studentos.feature.projects.domain.model.ProjectTaskPriority.HIGH,
+            deadline = 9999L
+        )
+
+        assertEquals(202L, taskId)
+        coVerify {
+            projectTaskDao.insert(
+                match {
+                    it.projectId == 1L &&
+                            it.title == "Assemble Circuit" &&
+                            it.dependencyTaskId == 10L &&
+                            it.priority == "HIGH" &&
+                            it.deadline == 9999L &&
+                            it.sortOrder == 2
+                }
+            )
+        }
+    }
+
+    @Test
+    fun deleteTask_clearsDependencyReferencesAndDeletes() = runTest {
+        val existingTask = ProjectTaskEntity(id = 10L, projectId = 1L, title = "Task to delete")
+        coEvery { projectTaskDao.getTaskById(10L) } returns existingTask
+
+        repository.deleteTask(10L)
+
+        coVerify {
+            projectTaskDao.clearDependencyReferences(10L)
+            projectTaskDao.deleteById(10L)
+        }
+    }
+
+    @Test
     fun setNextAction_clearsExistingNextActionFirstToPreserveInvariant() = runTest {
         repository.setNextAction(1L, 12L)
 

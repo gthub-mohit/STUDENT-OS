@@ -18,14 +18,18 @@ fun ProjectTaskRoute(
     ProjectTaskScreen(
         uiState = uiState,
         onBackClick = onBackClick,
-        onModeToggle = { viewModel.toggleParallelMode(it) },
         onCreateTaskClick = { viewModel.openCreateTaskDialog() },
         onEditTaskClick = { viewModel.openEditTaskDialog(it) },
         onToggleTaskCompletion = { viewModel.toggleTaskCompletion(it) },
-        onSetNextAction = { viewModel.setNextAction(it) },
         onDeleteTaskClick = { viewModel.deleteTask(it) },
+        onFilterClick = { viewModel.openFilterSheet() },
+        onFilterDismiss = { viewModel.dismissFilterSheet() },
+        onFilterApply = { viewModel.setStatusFilter(it) },
+        onClearFilters = { viewModel.clearFilters() },
         onDismissDialog = { viewModel.dismissDialog() },
-        onConfirmDialog = { title -> viewModel.saveTask(title) },
+        onConfirmDialog = { title, dependencyTaskId, priority, deadline ->
+            viewModel.saveTask(title, dependencyTaskId, priority, deadline)
+        },
         onRetryClick = { viewModel.observeProjectAndTasks() },
         modifier = modifier
     )

@@ -129,7 +129,14 @@ class ProjectRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createTask(projectId: Long, title: String, isParallel: Boolean): Long {
+    override suspend fun createTask(
+        projectId: Long,
+        title: String,
+        isParallel: Boolean,
+        dependencyTaskId: Long?,
+        priority: com.studentos.feature.projects.domain.model.ProjectTaskPriority,
+        deadline: Long?
+    ): Long {
         val maxSort = projectTaskDao.getMaxSortOrder(projectId) ?: -1
         val existingNext = projectTaskDao.getNextAction(projectId).firstOrNull()
         val shouldBeNext = existingNext == null
@@ -140,7 +147,10 @@ class ProjectRepositoryImpl @Inject constructor(
             isNextAction = shouldBeNext,
             isParallel = isParallel,
             completedAt = null,
-            sortOrder = maxSort + 1
+            sortOrder = maxSort + 1,
+            dependencyTaskId = dependencyTaskId,
+            priority = priority.name,
+            deadline = deadline
         )
         val taskId = projectTaskDao.insert(entity)
         val now = clock.millis()
@@ -149,9 +159,20 @@ class ProjectRepositoryImpl @Inject constructor(
         return taskId
     }
 
-    override suspend fun updateTask(taskId: Long, title: String) {
+    override suspend fun updateTask(
+        taskId: Long,
+        title: String,
+        dependencyTaskId: Long?,
+        priority: com.studentos.feature.projects.domain.model.ProjectTaskPriority,
+        deadline: Long?
+    ) {
         val existing = projectTaskDao.getTaskById(taskId) ?: return
-        val updated = existing.copy(title = title.trim())
+        val updated = existing.copy(
+            title = title.trim(),
+            dependencyTaskId = dependencyTaskId,
+            priority = priority.name,
+            deadline = deadline
+        )
         projectTaskDao.update(updated)
         val now = clock.millis()
         projectDao.updateLastActivityAt(existing.projectId, now)
@@ -160,6 +181,7 @@ class ProjectRepositoryImpl @Inject constructor(
 
     override suspend fun deleteTask(taskId: Long) {
         val existing = projectTaskDao.getTaskById(taskId) ?: return
+        projectTaskDao.clearDependencyReferences(taskId)
         projectTaskDao.deleteById(taskId)
         val now = clock.millis()
         projectDao.updateLastActivityAt(existing.projectId, now)
@@ -406,7 +428,10 @@ class ProjectRepositoryImpl @Inject constructor(
         isNextAction = isNextAction,
         isParallel = isParallel,
         completedAt = completedAt,
-        sortOrder = sortOrder
+        sortOrder = sortOrder,
+        dependencyTaskId = dependencyTaskId,
+        priority = com.studentos.feature.projects.domain.model.ProjectTaskPriority.fromString(priority),
+        deadline = deadline
     )
 
     private fun MilestoneEntity.toDomain() = MilestoneDomain(

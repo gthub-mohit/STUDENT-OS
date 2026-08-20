@@ -18,8 +18,21 @@ interface ProjectRepository {
 
     // Task Operations
     fun getTasksForProject(projectId: Long): Flow<List<ProjectTaskDomain>>
-    suspend fun createTask(projectId: Long, title: String, isParallel: Boolean): Long
-    suspend fun updateTask(taskId: Long, title: String)
+    suspend fun createTask(
+        projectId: Long,
+        title: String,
+        isParallel: Boolean = false,
+        dependencyTaskId: Long? = null,
+        priority: com.studentos.feature.projects.domain.model.ProjectTaskPriority = com.studentos.feature.projects.domain.model.ProjectTaskPriority.MEDIUM,
+        deadline: Long? = null
+    ): Long
+    suspend fun updateTask(
+        taskId: Long,
+        title: String,
+        dependencyTaskId: Long? = null,
+        priority: com.studentos.feature.projects.domain.model.ProjectTaskPriority = com.studentos.feature.projects.domain.model.ProjectTaskPriority.MEDIUM,
+        deadline: Long? = null
+    )
     suspend fun deleteTask(taskId: Long)
     suspend fun completeTask(taskId: Long)
     suspend fun reopenTask(taskId: Long)

@@ -120,13 +120,13 @@ class ProjectDomainTest {
 
         assertEquals(2, state.pendingTasks.size)
         assertEquals(1, state.completedTasks.size)
-        assertEquals("T1", state.activeNextAction?.title)
+        assertEquals("T1", state.nextAction.title)
     }
 
     @Test
     fun projectTaskUiState_emptyHandling() {
         val emptyState = ProjectTaskUiState(isLoading = false, tasks = emptyList())
         assertTrue(emptyState.isEmpty)
-        assertNull(emptyState.activeNextAction)
+        assertNull(emptyState.nextAction.task)
     }
 }

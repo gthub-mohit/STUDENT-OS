@@ -35,6 +35,9 @@ interface ProjectTaskDao {
     @Query("DELETE FROM project_tasks WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("UPDATE project_tasks SET dependency_task_id = NULL WHERE dependency_task_id = :taskId")
+    suspend fun clearDependencyReferences(taskId: Long)
+
     @Query("DELETE FROM project_tasks WHERE project_id = :projectId AND completed_at IS NOT NULL")
     suspend fun deleteCompletedTasksForProject(projectId: Long)
 
