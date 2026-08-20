@@ -1,17 +1,12 @@
 /*
  * feature/settings/build.gradle.kts — :feature:settings
  *
- * Stub created in task 0.1 so settings.gradle.kts resolves cleanly.
- * Full implementation begins in task 9.1 (SettingsScreen).
+ * Full implementation for task 9.1 (SettingsScreen), 9.1a (AI Settings & Diagnostics),
+ * Unit 7.5 (Notification Settings), and Unit 8 (Backup & Restore).
  *
  * Allowed dependencies (folder-structure.md):
  *   :core:database, :core:intelligence, :core:ui
  * Forbidden: any other :feature:* module.
- * Note: :feature:settings is the only feature module that provides BackupRepository,
- *       which depends on all DAOs through :core:database. This is an intentional
- *       exception documented in folder-structure.md — it does NOT violate module
- *       boundaries because all DAOs are accessed via :core:database, not via
- *       other feature modules.
  */
 plugins {
     alias(libs.plugins.android.library)
@@ -42,13 +37,30 @@ dependencies {
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     implementation(libs.bundles.composeUi)
+    implementation(libs.navigation.compose)
+    implementation(libs.hilt.navigation.compose)
 
-    // Hilt — required by the hilt plugin applied above.
+    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+
     // Core module dependencies
     implementation(project(":core:database"))
+    implementation(project(":core:intelligence"))
+    implementation(project(":core:ui"))
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // Unit Testing
+    testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 
     // Lint — feature-to-feature dependency guard.
     lintChecks(project(":lint-checks"))

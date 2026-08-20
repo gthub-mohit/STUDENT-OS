@@ -1,0 +1,31 @@
+package com.studentos.feature.settings.domain.model
+
+data class SettingsDomain(
+    val attendanceThreshold: Int = 75,
+    val cpSyncIntervalMinutes: Int = 360,
+    val dailyBriefTimeHHmm: String = "07:00",
+    val defaultAssignmentReminderLeadMs: Long = 86_400_000L,
+    val contestReminderLookaheadMs: Long = 86_400_000L,
+    val projectInactivityThresholdDays: Int = 7,
+    val scoreWeightClass: Int = 10,
+    val scoreWeightAssignment: Int = 20,
+    val scoreWeightProjectAction: Int = 15,
+    val scoreWeightDsa: Int = 10,
+    val ocrConfidenceThreshold: Float = 0.80f,
+    val aiEnabled: Boolean = true,
+    val aiProvider: String = "DEEPSEEK",
+    val aiIntradayUpdatesEnabled: Boolean = true,
+    val aiMaxCallsPerDay: Int = 10,
+    val aiCacheMaxAgeHours: Int = 6,
+    val aiTonePreference: String = "motivational",
+    val codeChefHandle: String = "",
+    val codeforcesHandle: String = "",
+    val deepSeekApiKey: String = "",
+    val notificationDailyBriefEnabled: Boolean = true,
+    val notificationAssignmentReminderEnabled: Boolean = true,
+    val notificationClassReminderEnabled: Boolean = true,
+    val notificationClassReminderLeadMinutes: Int = 15,
+    val notificationContestReminderEnabled: Boolean = true,
+    val notificationFreeSlotEnabled: Boolean = true,
+    val notificationInactiveProjectEnabled: Boolean = true
+)

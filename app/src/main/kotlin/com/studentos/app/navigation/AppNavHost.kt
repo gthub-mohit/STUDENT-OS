@@ -29,6 +29,8 @@ import com.studentos.feature.coding.navigation.CodingNavGraph
 import com.studentos.feature.coding.navigation.codingNavGraph
 import com.studentos.feature.intelligence.navigation.intelligenceNavGraph
 
+import com.studentos.feature.settings.navigation.settingsNavGraph
+
 /**
  * Initializes the default module registry graphs and bottom navigation destinations.
  * Safe to call multiple times (idempotent).
@@ -132,12 +134,7 @@ fun initDefaultModuleRegistry() {
         override val baseRoute = "settings"
         override val navItem = null
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
-            builder.composable("settings/main") {
-                PlaceholderScreen(
-                    title = "Settings Screen",
-                    subtitle = "Route: settings/main"
-                )
-            }
+            builder.settingsNavGraph(navController)
         }
     })
 }

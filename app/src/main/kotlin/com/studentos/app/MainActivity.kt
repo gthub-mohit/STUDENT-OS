@@ -51,7 +51,8 @@ class MainActivity : ComponentActivity() {
 private val detailRoutes = setOf(
     "intelligence/daily-brief?date={date}",
     "intelligence/history",
-    "settings/main"
+    "settings/main",
+    "settings/ai-diagnostics"
 )
 
 @Composable

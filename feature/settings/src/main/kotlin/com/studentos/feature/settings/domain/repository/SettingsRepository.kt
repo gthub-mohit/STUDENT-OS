@@ -1,12 +1,18 @@
 package com.studentos.feature.settings.domain.repository
 
+import com.studentos.feature.settings.domain.model.SettingsDomain
+import kotlinx.coroutines.flow.Flow
+
 /**
  * SettingsRepository — Domain repository contract for Student OS settings.
  *
- * Provides typed accessors and mutators for all 17 configurable parameters
- * specified in the design document, backed by the Room `settings` key-value table.
+ * Provides typed accessors and mutators for all configurable parameters,
+ * backed by the Room `settings` key-value table.
  */
 interface SettingsRepository {
+
+    fun observeAllSettings(): Flow<SettingsDomain>
+    suspend fun getAllSettings(): SettingsDomain
 
     suspend fun getAttendanceThreshold(): Int
     suspend fun setAttendanceThreshold(value: Int)
@@ -59,6 +65,36 @@ interface SettingsRepository {
     suspend fun getAiTonePreference(): String
     suspend fun setAiTonePreference(value: String)
 
+    suspend fun getCodeChefHandle(): String
+    suspend fun setCodeChefHandle(value: String)
+
+    suspend fun getCodeforcesHandle(): String
+    suspend fun setCodeforcesHandle(value: String)
+
+    suspend fun getDeepSeekApiKey(): String
+    suspend fun setDeepSeekApiKey(value: String)
+
+    suspend fun getNotificationDailyBriefEnabled(): Boolean
+    suspend fun setNotificationDailyBriefEnabled(value: Boolean)
+
+    suspend fun getNotificationAssignmentReminderEnabled(): Boolean
+    suspend fun setNotificationAssignmentReminderEnabled(value: Boolean)
+
+    suspend fun getNotificationClassReminderEnabled(): Boolean
+    suspend fun setNotificationClassReminderEnabled(value: Boolean)
+
+    suspend fun getNotificationClassReminderLeadMinutes(): Int
+    suspend fun setNotificationClassReminderLeadMinutes(value: Int)
+
+    suspend fun getNotificationContestReminderEnabled(): Boolean
+    suspend fun setNotificationContestReminderEnabled(value: Boolean)
+
+    suspend fun getNotificationFreeSlotEnabled(): Boolean
+    suspend fun setNotificationFreeSlotEnabled(value: Boolean)
+
+    suspend fun getNotificationInactiveProjectEnabled(): Boolean
+    suspend fun setNotificationInactiveProjectEnabled(value: Boolean)
+
     /**
      * Resets all settings to their default values.
      */
@@ -87,6 +123,16 @@ interface SettingsRepository {
         const val KEY_AI_MAX_CALLS_PER_DAY = "ai_max_calls_per_day"
         const val KEY_AI_CACHE_MAX_AGE_HOURS = "ai_cache_max_age_hours"
         const val KEY_AI_TONE_PREFERENCE = "ai_tone_preference"
+        const val KEY_HANDLE_CODECHEF = "handle_codechef"
+        const val KEY_HANDLE_CODEFORCES = "handle_codeforces"
+        const val KEY_DEEPSEEK_API_KEY = "deepseek_api_key"
+        const val KEY_NOTIFICATION_DAILY_BRIEF_ENABLED = "notification_daily_brief_enabled"
+        const val KEY_NOTIFICATION_ASSIGNMENT_REMINDER_ENABLED = "notification_assignment_reminder_enabled"
+        const val KEY_NOTIFICATION_CLASS_REMINDER_ENABLED = "notification_class_reminder_enabled"
+        const val KEY_NOTIFICATION_CLASS_REMINDER_LEAD_MINUTES = "notification_class_reminder_lead_minutes"
+        const val KEY_NOTIFICATION_CONTEST_REMINDER_ENABLED = "notification_contest_reminder_enabled"
+        const val KEY_NOTIFICATION_FREE_SLOT_ENABLED = "notification_free_slot_enabled"
+        const val KEY_NOTIFICATION_INACTIVE_PROJECT_ENABLED = "notification_inactive_project_enabled"
 
         // Defaults
         const val DEFAULT_ATTENDANCE_THRESHOLD = 75
@@ -106,5 +152,6 @@ interface SettingsRepository {
         const val DEFAULT_AI_MAX_CALLS_PER_DAY = 10
         const val DEFAULT_AI_CACHE_MAX_AGE_HOURS = 6
         const val DEFAULT_AI_TONE_PREFERENCE = "motivational"
+        const val DEFAULT_NOTIFICATION_CLASS_REMINDER_LEAD_MINUTES = 15
     }
 }

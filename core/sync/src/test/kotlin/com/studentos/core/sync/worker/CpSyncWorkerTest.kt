@@ -92,6 +92,8 @@ class CpSyncWorkerTest {
     ) : SettingsDao {
         override suspend fun get(key: String): String? = settingsMap[key]
         override suspend fun getAll(): List<SettingEntity> = settingsMap.map { SettingEntity(it.key, it.value) }
+        override fun observeAll(): kotlinx.coroutines.flow.Flow<List<SettingEntity>> =
+            kotlinx.coroutines.flow.flowOf(settingsMap.map { SettingEntity(it.key, it.value) })
         override suspend fun set(setting: SettingEntity) {
             settingsMap[setting.key] = setting.value
         }

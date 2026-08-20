@@ -30,6 +30,7 @@ class WeeklyViewModelTest {
             return if (key == "attendance_threshold") "75" else null
         }
         override suspend fun getAll(): List<SettingEntity> = emptyList()
+        override fun observeAll(): Flow<List<SettingEntity>> = flowOf(emptyList())
         override suspend fun set(setting: SettingEntity) {}
     }
 
