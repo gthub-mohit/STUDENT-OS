@@ -22,6 +22,9 @@ interface CpContestDao {
     @Query("SELECT * FROM cp_contests WHERE profile_id = :profileId ORDER BY contest_date DESC LIMIT :limit")
     fun getRecentContests(profileId: Long, limit: Int): Flow<List<CpContestEntity>>
 
+    @Query("SELECT * FROM cp_contests ORDER BY contest_date DESC")
+    fun getAllContests(): Flow<List<CpContestEntity>>
+
     @Query("SELECT * FROM cp_contests WHERE contest_date >= :nowEpoch AND contest_date <= :lookaheadEpoch ORDER BY contest_date ASC")
     suspend fun getUpcomingContests(nowEpoch: Long, lookaheadEpoch: Long): List<CpContestEntity>
 }

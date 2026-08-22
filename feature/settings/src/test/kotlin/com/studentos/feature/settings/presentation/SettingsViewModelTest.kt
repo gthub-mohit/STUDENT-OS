@@ -1,6 +1,8 @@
 package com.studentos.feature.settings.presentation
 
 import app.cash.turbine.test
+import com.studentos.core.database.dao.CpProfileDao
+import com.studentos.core.database.entity.CpProfileEntity
 import com.studentos.feature.settings.domain.model.SettingsDomain
 import com.studentos.feature.settings.domain.repository.BackupRepository
 import com.studentos.feature.settings.domain.repository.SettingsRepository
@@ -28,6 +30,7 @@ class SettingsViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val settingsRepository: SettingsRepository = mockk(relaxed = true)
     private val backupRepository: BackupRepository = mockk(relaxed = true)
+    private val cpProfileDao: CpProfileDao = mockk(relaxed = true)
     private val settingsFlow = MutableStateFlow(SettingsDomain())
 
     private lateinit var viewModel: SettingsViewModel
@@ -36,7 +39,13 @@ class SettingsViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         coEvery { settingsRepository.observeAllSettings() } returns settingsFlow
-        viewModel = SettingsViewModel(settingsRepository, backupRepository)
+        coEvery { cpProfileDao.getProfileByPlatformOnce(any()) } returns null
+        viewModel = SettingsViewModel(
+            settingsRepository = settingsRepository,
+            backupRepository = backupRepository,
+            context = null,
+            cpProfileDao = cpProfileDao
+        )
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -83,11 +92,21 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun updateCodeChefHandle_callsRepository() = runTest {
+    fun updateCodeChefHandle_callsRepositoryAndUpsertsDao() = runTest {
         viewModel.updateCodeChefHandle("tourist")
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { settingsRepository.setCodeChefHandle("tourist") }
+        coVerify { cpProfileDao.upsert(match { it.platform == CpProfileEntity.PLATFORM_CODECHEF && it.handle == "tourist" }) }
+    }
+
+    @Test
+    fun updateCodeforcesHandle_blankHandle_deletesProfile() = runTest {
+        viewModel.updateCodeforcesHandle("")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { settingsRepository.setCodeforcesHandle("") }
+        coVerify { cpProfileDao.deleteByPlatform(CpProfileEntity.PLATFORM_CODEFORCES) }
     }
 
     @Test

@@ -53,21 +53,52 @@ class CpRepositoryImplTest {
             return flowOf(profiles.find { it.platform == platform })
         }
 
+        override suspend fun getProfileByPlatformOnce(platform: String): CpProfileEntity? {
+            return profiles.find { it.platform == platform }
+        }
+
+        override suspend fun deleteByPlatform(platform: String) {
+            profiles.removeAll { it.platform == platform }
+        }
+
         override fun getAllProfiles(): Flow<List<CpProfileEntity>> = flowOf(profiles)
         override suspend fun getProfilesForSnapshot(): List<CpProfileEntity> = profiles
     }
 
     private class FakeCpContestDao : CpContestDao {
-        override suspend fun upsertContests(contests: List<CpContestEntity>): List<Long> = emptyList()
-        override fun getContestsByProfile(profileId: Long): Flow<List<CpContestEntity>> = flowOf(emptyList())
-        override fun getRecentContests(profileId: Long, limit: Int): Flow<List<CpContestEntity>> = flowOf(emptyList())
+        val contests = mutableListOf<CpContestEntity>()
+
+        override suspend fun upsertContests(contests: List<CpContestEntity>): List<Long> {
+            this.contests.addAll(contests)
+            return contests.map { it.id }
+        }
+
+        override fun getContestsByProfile(profileId: Long): Flow<List<CpContestEntity>> =
+            flowOf(contests.filter { it.profileId == profileId })
+
+        override fun getRecentContests(profileId: Long, limit: Int): Flow<List<CpContestEntity>> =
+            flowOf(contests.filter { it.profileId == profileId }.take(limit))
+
+        override fun getAllContests(): Flow<List<CpContestEntity>> = flowOf(contests)
+
         override suspend fun getUpcomingContests(fromEpochMs: Long, toEpochMs: Long): List<CpContestEntity> = emptyList()
     }
 
     private class FakeCpReflectionDao : CpReflectionDao {
-        override suspend fun insert(reflection: CpReflectionEntity): Long = 1L
-        override suspend fun update(reflection: CpReflectionEntity) {}
-        override fun getReflectionForContest(contestId: Long): Flow<CpReflectionEntity?> = flowOf(null)
+        val reflections = mutableListOf<CpReflectionEntity>()
+
+        override suspend fun insert(reflection: CpReflectionEntity): Long {
+            reflections.add(reflection)
+            return reflection.id
+        }
+
+        override suspend fun update(reflection: CpReflectionEntity) {
+            reflections.removeAll { it.contestId == reflection.contestId }
+            reflections.add(reflection)
+        }
+
+        override fun getReflectionForContest(contestId: Long): Flow<CpReflectionEntity?> =
+            flowOf(reflections.find { it.contestId == contestId })
     }
 
     @Test
@@ -86,5 +117,24 @@ class CpRepositoryImplTest {
         assertEquals(1, savedProfiles.size)
         assertEquals("CODEFORCES", savedProfiles[0].platform)
         assertEquals("tourist", savedProfiles[0].handle)
+    }
+
+    @Test
+    fun getAllContests_returnsContestsFromDao() = runBlocking {
+        val profileDao = FakeCpProfileDao()
+        val contestDao = FakeCpContestDao()
+        val reflectionDao = FakeCpReflectionDao()
+        val eventBus = FakeAppEventBus()
+
+        contestDao.upsertContests(
+            listOf(
+                CpContestEntity(id = 1L, profileId = 10L, contestName = "Starters 100", contestDate = 1000L),
+                CpContestEntity(id = 2L, profileId = 20L, contestName = "Round 900", contestDate = 2000L)
+            )
+        )
+
+        val repo = CpRepositoryImpl(profileDao, contestDao, reflectionDao, eventBus)
+        val allContests = repo.getAllContests().first()
+        assertEquals(2, allContests.size)
     }
 }

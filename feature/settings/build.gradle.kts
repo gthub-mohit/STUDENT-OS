@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:intelligence"))
     implementation(project(":core:notifications"))
+    implementation(project(":core:sync"))
     implementation(project(":core:ui"))
 
     // Serialization

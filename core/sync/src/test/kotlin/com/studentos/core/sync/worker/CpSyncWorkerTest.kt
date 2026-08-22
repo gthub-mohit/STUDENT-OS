@@ -64,6 +64,8 @@ class CpSyncWorkerTest {
 
         override suspend fun updateRatingAndSyncTime(id: Long, rating: Int?, syncTime: Long) {}
         override fun getProfileByPlatform(platform: String): Flow<CpProfileEntity?> = flowOf(profiles.firstOrNull { it.platform == platform })
+        override suspend fun getProfileByPlatformOnce(platform: String): CpProfileEntity? = profiles.firstOrNull { it.platform == platform }
+        override suspend fun deleteByPlatform(platform: String) { profiles.removeAll { it.platform == platform } }
         override fun getAllProfiles(): Flow<List<CpProfileEntity>> = flowOf(profiles)
         override suspend fun getProfilesForSnapshot(): List<CpProfileEntity> = profiles.toList()
     }
@@ -81,6 +83,7 @@ class CpSyncWorkerTest {
 
         override fun getContestsByProfile(profileId: Long): Flow<List<CpContestEntity>> = flowOf(contests.filter { it.profileId == profileId })
         override fun getRecentContests(profileId: Long, limit: Int): Flow<List<CpContestEntity>> = flowOf(contests.filter { it.profileId == profileId })
+        override fun getAllContests(): Flow<List<CpContestEntity>> = flowOf(contests)
 
         override suspend fun getUpcomingContests(nowEpoch: Long, lookaheadEpoch: Long): List<CpContestEntity> {
             return contests.filter { it.contestDate in nowEpoch..lookaheadEpoch }

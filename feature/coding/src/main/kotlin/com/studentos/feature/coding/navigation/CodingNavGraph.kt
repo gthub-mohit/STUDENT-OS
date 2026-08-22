@@ -19,7 +19,14 @@ object CodingNavGraph {
 
 fun NavGraphBuilder.codingNavGraph(navController: NavController) {
     composable(route = CodingNavGraph.ROUTE_CP_DASHBOARD) {
-        CpDashboardRoute()
+        CpDashboardRoute(
+            onNavigateToKnowledgeTree = {
+                navController.navigate(CodingNavGraph.ROUTE_KNOWLEDGE_TREE)
+            },
+            onNavigateToReflection = { contestId ->
+                navController.navigate(CodingNavGraph.contestReflectionRoute(contestId))
+            }
+        )
     }
 
     composable(

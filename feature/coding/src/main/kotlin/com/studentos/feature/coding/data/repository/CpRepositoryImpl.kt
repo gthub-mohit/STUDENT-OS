@@ -50,15 +50,8 @@ class CpRepositoryImpl @Inject constructor(
     }
 
     override fun getAllContests(): Flow<List<CpContest>> {
-        return cpProfileDao.getAllProfiles().flatMapLatest { profiles ->
-            if (profiles.isEmpty()) {
-                flowOf(emptyList())
-            } else {
-                val profileId = profiles.first().id
-                cpContestDao.getContestsByProfile(profileId).map { entities ->
-                    entities.map { it.toDomain() }
-                }
-            }
+        return cpContestDao.getAllContests().map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 

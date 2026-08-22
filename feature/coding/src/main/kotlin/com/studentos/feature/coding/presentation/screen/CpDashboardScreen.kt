@@ -11,12 +11,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,12 +41,17 @@ import com.studentos.feature.coding.presentation.viewmodel.CpDashboardViewModel
 
 @Composable
 fun CpDashboardRoute(
+    onNavigateToKnowledgeTree: () -> Unit = {},
+    onNavigateToReflection: (Long) -> Unit = {},
     viewModel: CpDashboardViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     CpDashboardScreen(
         uiState = uiState,
+        onSync = { viewModel.triggerSync() },
+        onNavigateToKnowledgeTree = onNavigateToKnowledgeTree,
+        onNavigateToReflection = onNavigateToReflection,
         modifier = modifier
     )
 }
@@ -49,6 +60,9 @@ fun CpDashboardRoute(
 @Composable
 fun CpDashboardScreen(
     uiState: CpDashboardUiState,
+    onSync: () -> Unit,
+    onNavigateToKnowledgeTree: () -> Unit,
+    onNavigateToReflection: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -61,6 +75,20 @@ fun CpDashboardScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    TextButton(onClick = onNavigateToKnowledgeTree) {
+                        Text(
+                            text = "DSA Tracker",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    IconButton(onClick = onSync) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Sync CP Profiles"
+                        )
+                    }
                 }
             )
         },
@@ -87,18 +115,28 @@ fun CpDashboardScreen(
                 }
 
                 uiState.isEmpty -> {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(24.dp),
-                        contentAlignment = Alignment.Center
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "No CP profile set up. Add your CodeChef or Codeforces handle in Settings → AI & Coding.",
+                            text = "No CP profile set up.\nAdd your CodeChef or Codeforces handle in Settings → AI & Coding, or tap Sync below.",
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onSync) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Text("Sync Profiles")
+                        }
                     }
                 }
 
@@ -144,7 +182,7 @@ fun CpDashboardScreen(
                                     shape = MaterialTheme.shapes.medium
                                 ) {
                                     Text(
-                                        text = "No contests recorded yet.",
+                                        text = "No contests recorded yet. Tap sync above to fetch recent contests.",
                                         modifier = Modifier.padding(16.dp),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -157,7 +195,10 @@ fun CpDashboardScreen(
                                 items = uiState.contests,
                                 key = { "contest_${it.id}" }
                             ) { contest ->
-                                ContestResultCard(contest = contest)
+                                ContestResultCard(
+                                    contest = contest,
+                                    onClick = { onNavigateToReflection(contest.id) }
+                                )
                             }
                         }
                     }

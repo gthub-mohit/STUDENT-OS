@@ -1,12 +1,17 @@
 package com.studentos.feature.settings.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.studentos.core.database.dao.CpProfileDao
+import com.studentos.core.database.entity.CpProfileEntity
 import com.studentos.core.notifications.scheduler.NotificationRescheduler
+import com.studentos.core.sync.worker.CpSyncWorker
 import com.studentos.feature.settings.domain.repository.BackupRepository
 import com.studentos.feature.settings.domain.repository.SettingsRepository
 import com.studentos.feature.settings.presentation.state.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +25,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val backupRepository: BackupRepository,
+    @ApplicationContext private val context: Context? = null,
+    private val cpProfileDao: CpProfileDao? = null,
     private val notificationRescheduler: NotificationRescheduler? = null
 ) : ViewModel() {
 
@@ -122,19 +129,63 @@ class SettingsViewModel @Inject constructor(
     // ── Competitive Programming ─────────────────────────────────────────────
     fun updateCodeChefHandle(handle: String) {
         viewModelScope.launch {
-            settingsRepository.setCodeChefHandle(handle.trim())
+            val clean = handle.trim()
+            settingsRepository.setCodeChefHandle(clean)
+            if (cpProfileDao != null) {
+                if (clean.isNotBlank()) {
+                    val existing = cpProfileDao.getProfileByPlatformOnce(CpProfileEntity.PLATFORM_CODECHEF)
+                    val entity = CpProfileEntity(
+                        id = existing?.id ?: 0L,
+                        platform = CpProfileEntity.PLATFORM_CODECHEF,
+                        handle = clean,
+                        currentRating = existing?.currentRating,
+                        highestRating = existing?.highestRating,
+                        rank = existing?.rank,
+                        problemsSolved = existing?.problemsSolved,
+                        contestCount = existing?.contestCount,
+                        lastSyncedAt = existing?.lastSyncedAt
+                    )
+                    cpProfileDao.upsert(entity)
+                    context?.let { CpSyncWorker.enqueueImmediate(it) }
+                } else {
+                    cpProfileDao.deleteByPlatform(CpProfileEntity.PLATFORM_CODECHEF)
+                }
+            }
         }
     }
 
     fun updateCodeforcesHandle(handle: String) {
         viewModelScope.launch {
-            settingsRepository.setCodeforcesHandle(handle.trim())
+            val clean = handle.trim()
+            settingsRepository.setCodeforcesHandle(clean)
+            if (cpProfileDao != null) {
+                if (clean.isNotBlank()) {
+                    val existing = cpProfileDao.getProfileByPlatformOnce(CpProfileEntity.PLATFORM_CODEFORCES)
+                    val entity = CpProfileEntity(
+                        id = existing?.id ?: 0L,
+                        platform = CpProfileEntity.PLATFORM_CODEFORCES,
+                        handle = clean,
+                        currentRating = existing?.currentRating,
+                        highestRating = existing?.highestRating,
+                        rank = existing?.rank,
+                        problemsSolved = existing?.problemsSolved,
+                        contestCount = existing?.contestCount,
+                        lastSyncedAt = existing?.lastSyncedAt
+                    )
+                    cpProfileDao.upsert(entity)
+                    context?.let { CpSyncWorker.enqueueImmediate(it) }
+                } else {
+                    cpProfileDao.deleteByPlatform(CpProfileEntity.PLATFORM_CODEFORCES)
+                }
+            }
         }
     }
 
     fun updateCpSyncInterval(minutes: Int) {
         viewModelScope.launch {
-            settingsRepository.setCpSyncIntervalMinutes(minutes.coerceAtLeast(15))
+            val validMinutes = minutes.coerceAtLeast(15)
+            settingsRepository.setCpSyncIntervalMinutes(validMinutes)
+            context?.let { CpSyncWorker.enqueuePeriodic(it, validMinutes.toLong()) }
         }
     }
 

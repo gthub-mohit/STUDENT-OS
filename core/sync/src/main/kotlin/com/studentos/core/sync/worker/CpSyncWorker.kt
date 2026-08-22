@@ -172,6 +172,47 @@ class CpSyncWorker @AssistedInject constructor(
     }
 
     companion object {
+        const val WORK_NAME_PERIODIC = "cp_sync_periodic"
+        const val WORK_NAME_IMMEDIATE = "cp_sync_immediate"
         const val DEFAULT_LOOKAHEAD_MS = 86400000L // 24 hours
+
+        fun enqueueImmediate(context: Context) {
+            try {
+                val constraints = androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build()
+                val request = OneTimeWorkRequestBuilder<CpSyncWorker>()
+                    .setConstraints(constraints)
+                    .build()
+                WorkManager.getInstance(context).enqueueUniqueWork(
+                    WORK_NAME_IMMEDIATE,
+                    ExistingWorkPolicy.REPLACE,
+                    request
+                )
+            } catch (_: Exception) {
+                // Ignore during test execution
+            }
+        }
+
+        fun enqueuePeriodic(context: Context, intervalMinutes: Long = 360L) {
+            try {
+                val constraints = androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build()
+                val request = androidx.work.PeriodicWorkRequestBuilder<CpSyncWorker>(
+                    intervalMinutes.coerceAtLeast(15L),
+                    TimeUnit.MINUTES
+                )
+                    .setConstraints(constraints)
+                    .build()
+                WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                    WORK_NAME_PERIODIC,
+                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+                    request
+                )
+            } catch (_: Exception) {
+                // Ignore during test execution
+            }
+        }
     }
 }

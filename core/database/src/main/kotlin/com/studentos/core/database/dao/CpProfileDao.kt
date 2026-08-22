@@ -25,6 +25,12 @@ interface CpProfileDao {
     @Query("SELECT * FROM cp_profiles ORDER BY platform ASC")
     fun getAllProfiles(): Flow<List<CpProfileEntity>>
 
+    @Query("SELECT * FROM cp_profiles WHERE platform = :platform LIMIT 1")
+    suspend fun getProfileByPlatformOnce(platform: String): CpProfileEntity?
+
+    @Query("DELETE FROM cp_profiles WHERE platform = :platform")
+    suspend fun deleteByPlatform(platform: String)
+
     @Query("SELECT * FROM cp_profiles ORDER BY platform ASC")
     suspend fun getProfilesForSnapshot(): List<CpProfileEntity>
 }
