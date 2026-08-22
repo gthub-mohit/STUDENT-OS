@@ -10,6 +10,7 @@ import com.studentos.core.database.entity.SubjectEntity
 import com.studentos.core.database.entity.TimetableSlotEntity
 import com.studentos.core.events.AppError
 import com.studentos.core.events.AppResult
+import com.studentos.core.notifications.scheduler.NotificationRescheduler
 import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import com.studentos.feature.attendance.domain.repository.TimetableRepository
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +24,8 @@ class TimetableRepositoryImpl @Inject constructor(
     private val database: AppDatabase,
     private val subjectDao: SubjectDao,
     private val timetableSlotDao: TimetableSlotDao,
-    private val classEventDao: ClassEventDao
+    private val classEventDao: ClassEventDao,
+    private val notificationRescheduler: NotificationRescheduler? = null
 ) : TimetableRepository {
 
     override fun getAllSlots(): Flow<List<TimetableSlotEntity>> {
@@ -184,6 +186,10 @@ class TimetableRepositoryImpl @Inject constructor(
                 }
 
                 AppResult.Success(Unit)
+            }.also { result ->
+                if (result is AppResult.Success) {
+                    try { notificationRescheduler?.rescheduleClassReminders() } catch (_: Exception) {}
+                }
             }
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Database import failure"))
@@ -201,6 +207,10 @@ class TimetableRepositoryImpl @Inject constructor(
                 val insertedSlot = slot.copy(id = slotId)
                 populateEventsForSlot(insertedSlot, horizonDays, now)
                 AppResult.Success(slotId)
+            }.also { result ->
+                if (result is AppResult.Success) {
+                    try { notificationRescheduler?.rescheduleClassReminders() } catch (_: Exception) {}
+                }
             }
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to add timetable slot"))
@@ -219,6 +229,10 @@ class TimetableRepositoryImpl @Inject constructor(
                 timetableSlotDao.update(slot)
                 populateEventsForSlot(slot, horizonDays, now)
                 AppResult.Success(Unit)
+            }.also { result ->
+                if (result is AppResult.Success) {
+                    try { notificationRescheduler?.rescheduleClassReminders() } catch (_: Exception) {}
+                }
             }
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to update timetable slot"))
@@ -235,6 +249,10 @@ class TimetableRepositoryImpl @Inject constructor(
                 classEventDao.nullifySlotReferences(listOf(slotId), now)
                 timetableSlotDao.deleteById(slotId)
                 AppResult.Success(Unit)
+            }.also { result ->
+                if (result is AppResult.Success) {
+                    try { notificationRescheduler?.rescheduleClassReminders() } catch (_: Exception) {}
+                }
             }
         } catch (e: Exception) {
             AppResult.Failure(AppError.DatabaseError(e.message ?: "Failed to delete timetable slot"))

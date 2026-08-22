@@ -4,6 +4,7 @@ import android.content.Context
 import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.entity.AssignmentEntity
 import com.studentos.core.database.entity.SettingEntity
+import com.studentos.core.notifications.alarm.ExactAlarmScheduler
 import com.studentos.feature.assignments.data.scheduler.AssignmentReminderSchedulerImpl
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -12,7 +13,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.io.File
 
 class AssignmentReminderSchedulerTest {
 
@@ -28,11 +28,35 @@ class AssignmentReminderSchedulerTest {
         }
     }
 
+    private class FakeExactAlarmScheduler : ExactAlarmScheduler {
+        var lastScheduledRequestCode: Int? = null
+        var lastTriggerEpochMs: Long? = null
+        var lastCancelledRequestCode: Int? = null
+
+        override fun scheduleExactAlarm(
+            requestCode: Int,
+            triggerEpochMs: Long,
+            channelId: String,
+            notificationId: Int,
+            title: String,
+            message: String,
+            route: String?
+        ) {
+            lastScheduledRequestCode = requestCode
+            lastTriggerEpochMs = triggerEpochMs
+        }
+
+        override fun cancelExactAlarm(requestCode: Int) {
+            lastCancelledRequestCode = requestCode
+        }
+    }
+
     private class MinimalTestContext : android.content.ContextWrapper(null) {
         override fun getApplicationContext(): Context = this
     }
 
     private lateinit var settingsDao: FakeSettingsDao
+    private lateinit var fakeExactAlarmScheduler: FakeExactAlarmScheduler
     private lateinit var scheduler: AssignmentReminderSchedulerImpl
 
     private var enqueuedTag: String? = null
@@ -43,7 +67,12 @@ class AssignmentReminderSchedulerTest {
     @Before
     fun setUp() {
         settingsDao = FakeSettingsDao()
-        scheduler = AssignmentReminderSchedulerImpl(MinimalTestContext(), settingsDao).apply {
+        fakeExactAlarmScheduler = FakeExactAlarmScheduler()
+        scheduler = AssignmentReminderSchedulerImpl(
+            MinimalTestContext(),
+            settingsDao,
+            fakeExactAlarmScheduler
+        ).apply {
             enqueueWorkDelegate = { tag, delayMs, id ->
                 enqueuedTag = tag
                 enqueuedDelayMs = delayMs
@@ -77,7 +106,7 @@ class AssignmentReminderSchedulerTest {
         assertEquals("assignment_10", enqueuedTag)
         assertEquals(10L, enqueuedId)
         assertNotNull(enqueuedDelayMs)
-        // Expected delay approx 1 hour (3600000ms)
+        assertEquals((20_000 + 10).toInt(), fakeExactAlarmScheduler.lastScheduledRequestCode)
         assertTrue((enqueuedDelayMs ?: 0L) in 3500000L..3700000L)
     }
 
@@ -97,6 +126,7 @@ class AssignmentReminderSchedulerTest {
         scheduler.scheduleReminder(assignment)
 
         assertEquals("assignment_10", enqueuedTag)
+        assertEquals((20_000 + 10).toInt(), fakeExactAlarmScheduler.lastScheduledRequestCode)
         assertTrue((enqueuedDelayMs ?: 0L) in 5300000L..5500000L)
     }
 
@@ -116,6 +146,7 @@ class AssignmentReminderSchedulerTest {
 
         assertNull(enqueuedTag)
         assertEquals("assignment_15", cancelledTag)
+        assertEquals((20_000 + 15).toInt(), fakeExactAlarmScheduler.lastCancelledRequestCode)
     }
 
     @Test
@@ -134,6 +165,7 @@ class AssignmentReminderSchedulerTest {
 
         assertNull(enqueuedTag)
         assertEquals("assignment_20", cancelledTag)
+        assertEquals((20_000 + 20).toInt(), fakeExactAlarmScheduler.lastCancelledRequestCode)
     }
 
     @Test
@@ -154,7 +186,7 @@ class AssignmentReminderSchedulerTest {
         scheduler.scheduleReminder(assignment)
 
         assertEquals("assignment_25", enqueuedTag)
-        // Expected delay = 2h - 30m = 1.5h = 5400000ms
+        assertEquals((20_000 + 25).toInt(), fakeExactAlarmScheduler.lastScheduledRequestCode)
         assertTrue((enqueuedDelayMs ?: 0L) in 5300000L..5500000L)
     }
 
@@ -176,7 +208,7 @@ class AssignmentReminderSchedulerTest {
         scheduler.scheduleReminder(assignment)
 
         assertEquals("assignment_30", enqueuedTag)
-        // Expected delay = 2h - 15m = 1h 45m = 6300000ms
+        assertEquals((20_000 + 30).toInt(), fakeExactAlarmScheduler.lastScheduledRequestCode)
         assertTrue((enqueuedDelayMs ?: 0L) in 6200000L..6400000L)
     }
 
@@ -197,5 +229,6 @@ class AssignmentReminderSchedulerTest {
 
         assertNull(enqueuedTag)
         assertEquals("assignment_35", cancelledTag)
+        assertEquals((20_000 + 35).toInt(), fakeExactAlarmScheduler.lastCancelledRequestCode)
     }
 }

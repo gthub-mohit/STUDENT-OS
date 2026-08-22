@@ -7,6 +7,7 @@ import com.studentos.core.events.AppError
 import com.studentos.core.events.AppEvent
 import com.studentos.core.events.AppEventBus
 import com.studentos.core.events.AppResult
+import com.studentos.core.notifications.scheduler.NotificationRescheduler
 import com.studentos.feature.attendance.domain.repository.ClassEventRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -16,7 +17,8 @@ import javax.inject.Inject
  */
 class ClassEventRepositoryImpl @Inject constructor(
     private val classEventDao: ClassEventDao,
-    private val appEventBus: AppEventBus
+    private val appEventBus: AppEventBus,
+    private val notificationRescheduler: NotificationRescheduler? = null
 ) : ClassEventRepository {
 
     override fun getEventsForSubject(subjectId: Long): Flow<List<ClassEventEntity>> {
@@ -46,6 +48,12 @@ class ClassEventRepositoryImpl @Inject constructor(
             // Emit events AFTER database write completes successfully
             appEventBus.emit(AppEvent.AttendanceMarked(subjectId = event.subjectId, status = status))
             appEventBus.emit(AppEvent.AttendanceUpdated(subjectId = event.subjectId))
+
+            try {
+                notificationRescheduler?.rescheduleClassReminders()
+            } catch (_: Exception) {
+                // Non-blocking
+            }
 
             AppResult.Success(Unit)
         } catch (e: Exception) {
@@ -81,6 +89,12 @@ class ClassEventRepositoryImpl @Inject constructor(
                 )
             )
             appEventBus.emit(AppEvent.AttendanceUpdated(subjectId = subjectId))
+
+            try {
+                notificationRescheduler?.rescheduleClassReminders()
+            } catch (_: Exception) {
+                // Non-blocking
+            }
 
             AppResult.Success(newId)
         } catch (e: Exception) {

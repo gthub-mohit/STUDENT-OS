@@ -2,6 +2,7 @@ package com.studentos.feature.settings.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.studentos.core.notifications.scheduler.NotificationRescheduler
 import com.studentos.feature.settings.domain.repository.BackupRepository
 import com.studentos.feature.settings.domain.repository.SettingsRepository
 import com.studentos.feature.settings.presentation.state.SettingsUiState
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val backupRepository: BackupRepository
+    private val backupRepository: BackupRepository,
+    private val notificationRescheduler: NotificationRescheduler? = null
 ) : ViewModel() {
 
     private val _uiFlags = MutableStateFlow(Flags())
@@ -180,60 +182,70 @@ class SettingsViewModel @Inject constructor(
     fun updateNotificationDailyBrief(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationDailyBriefEnabled(enabled)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateNotificationAssignmentReminder(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationAssignmentReminderEnabled(enabled)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateNotificationClassReminder(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationClassReminderEnabled(enabled)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateNotificationClassReminderLead(minutes: Int) {
         viewModelScope.launch {
             settingsRepository.setNotificationClassReminderLeadMinutes(minutes.coerceAtLeast(1))
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateNotificationContestReminder(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationContestReminderEnabled(enabled)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateNotificationFreeSlot(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationFreeSlotEnabled(enabled)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateNotificationInactiveProject(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationInactiveProjectEnabled(enabled)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateAssignmentReminderLeadMs(leadMs: Long) {
         viewModelScope.launch {
             settingsRepository.setDefaultAssignmentReminderLeadMs(leadMs)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateContestReminderLookaheadMs(lookaheadMs: Long) {
         viewModelScope.launch {
             settingsRepository.setContestReminderLookaheadMs(lookaheadMs)
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
     fun updateProjectInactivityThresholdDays(days: Int) {
         viewModelScope.launch {
             settingsRepository.setProjectInactivityThresholdDays(days.coerceAtLeast(1))
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
         }
     }
 
@@ -249,6 +261,7 @@ class SettingsViewModel @Inject constructor(
     fun confirmReset() {
         viewModelScope.launch {
             settingsRepository.reset()
+            try { notificationRescheduler?.rescheduleAll() } catch (_: Exception) {}
             _uiFlags.update {
                 it.copy(
                     showResetConfirmDialog = false,

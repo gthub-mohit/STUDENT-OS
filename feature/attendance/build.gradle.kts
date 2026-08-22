@@ -28,6 +28,7 @@ dependencies {
     // Core module dependencies
     implementation(project(":core:database"))
     implementation(project(":core:events"))
+    implementation(project(":core:notifications"))
 
     // Room
     implementation(libs.bundles.room)

@@ -13,11 +13,17 @@ import com.studentos.core.database.dao.AssignmentDao
 import com.studentos.core.database.dao.ClassEventDao
 import com.studentos.core.database.dao.CpContestDao
 import com.studentos.core.database.dao.SettingsDao
+import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.entity.AssignmentEntity
+import com.studentos.core.notifications.alarm.ExactAlarmScheduler
+import com.studentos.core.notifications.channel.NotificationChannelRegistry
 import com.studentos.core.notifications.worker.ClassReminderWorker
 import com.studentos.core.notifications.worker.ProjectInactivityWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.firstOrNull
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,9 +32,11 @@ import javax.inject.Singleton
 class NotificationReschedulerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val classEventDao: ClassEventDao,
+    private val subjectDao: SubjectDao,
     private val assignmentDao: AssignmentDao,
     private val cpContestDao: CpContestDao,
-    private val settingsDao: SettingsDao
+    private val settingsDao: SettingsDao,
+    private val exactAlarmScheduler: ExactAlarmScheduler
 ) : NotificationRescheduler {
 
     override suspend fun rescheduleAll() {
@@ -41,7 +49,7 @@ class NotificationReschedulerImpl @Inject constructor(
 
     override suspend fun rescheduleClassReminders() {
         val isEnabled = settingsDao.get("notification_class_reminder_enabled")?.toBooleanStrictOrNull() ?: true
-        val workManager = getWorkManager() ?: return
+        val workManager = getWorkManager()
 
         if (!isEnabled) {
             return
@@ -57,6 +65,7 @@ class NotificationReschedulerImpl @Inject constructor(
         for (event in upcomingEvents) {
             val statusUpper = event.status.uppercase().trim()
             if (statusUpper in setOf("CANCELLED", "HOLIDAY", "PRESENT", "ABSENT", "EXTRA_CLASS")) {
+                exactAlarmScheduler.cancelExactAlarm((10_000 + event.id).toInt())
                 continue
             }
 
@@ -64,28 +73,48 @@ class NotificationReschedulerImpl @Inject constructor(
             val delayMs = triggerEpoch - now
 
             if (delayMs > 0) {
-                val tag = "class_reminder_${event.id}"
-                val inputData = workDataOf(
-                    ClassReminderWorker.KEY_CLASS_EVENT_ID to event.id
-                )
-                val request = OneTimeWorkRequestBuilder<ClassReminderWorker>()
-                    .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
-                    .addTag(tag)
-                    .setInputData(inputData)
-                    .build()
+                val subject = subjectDao.getSubjectById(event.subjectId).firstOrNull()
+                val subjectName = subject?.name ?: "Class"
+                val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                val startTimeStr = timeFormat.format(Date(event.scheduledAt))
+                val message = "$subjectName starts at $startTimeStr in $leadMinutes minutes."
 
-                workManager.enqueueUniqueWork(
-                    tag,
-                    ExistingWorkPolicy.REPLACE,
-                    request
+                // 1. Schedule exact alarm with AlarmManager for instant background delivery
+                exactAlarmScheduler.scheduleExactAlarm(
+                    requestCode = (10_000 + event.id).toInt(),
+                    triggerEpochMs = triggerEpoch,
+                    channelId = NotificationChannelRegistry.CHANNEL_CLASS_REMINDER,
+                    notificationId = event.id.toInt(),
+                    title = "Upcoming Class",
+                    message = message,
+                    route = "weekly"
                 )
+
+                // 2. Schedule WorkManager request as fallback
+                if (workManager != null) {
+                    val tag = "class_reminder_${event.id}"
+                    val inputData = workDataOf(
+                        ClassReminderWorker.KEY_CLASS_EVENT_ID to event.id
+                    )
+                    val request = OneTimeWorkRequestBuilder<ClassReminderWorker>()
+                        .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+                        .addTag(tag)
+                        .setInputData(inputData)
+                        .build()
+
+                    workManager.enqueueUniqueWork(
+                        tag,
+                        ExistingWorkPolicy.REPLACE,
+                        request
+                    )
+                }
             }
         }
     }
 
     override suspend fun rescheduleAssignmentReminders() {
         val isEnabled = settingsDao.get("notification_assignment_reminder_enabled")?.toBooleanStrictOrNull() ?: true
-        val workManager = getWorkManager() ?: return
+        val workManager = getWorkManager()
 
         if (!isEnabled) {
             return
@@ -97,6 +126,7 @@ class NotificationReschedulerImpl @Inject constructor(
 
         for (assignment in allAssignments) {
             if (assignment.status == AssignmentEntity.STATUS_SUBMITTED || assignment.status == AssignmentEntity.STATUS_COMPLETED) {
+                exactAlarmScheduler.cancelExactAlarm((20_000 + assignment.id).toInt())
                 continue
             }
 
@@ -105,31 +135,48 @@ class NotificationReschedulerImpl @Inject constructor(
             val delayMs = triggerEpoch - now
 
             if (delayMs > 0) {
-                val tag = "assignment_${assignment.id}"
-                val inputData = workDataOf(
-                    "assignment_id" to assignment.id,
-                    "assignment_title" to assignment.title,
-                    "assignment_deadline" to assignment.deadline
+                val dateFormat = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+                val deadlineText = dateFormat.format(Date(assignment.deadline))
+
+                // 1. Schedule exact alarm with AlarmManager
+                exactAlarmScheduler.scheduleExactAlarm(
+                    requestCode = (20_000 + assignment.id).toInt(),
+                    triggerEpochMs = triggerEpoch,
+                    channelId = NotificationChannelRegistry.CHANNEL_ASSIGNMENT_REMINDER,
+                    notificationId = assignment.id.toInt(),
+                    title = "Assignment Due Soon: ${assignment.title}",
+                    message = "Due at $deadlineText",
+                    route = "assignments/list"
                 )
 
-                val request = try {
-                    val workerClass = Class.forName("com.studentos.feature.assignments.worker.AssignmentReminderWorker")
-                        .asSubclass(androidx.work.ListenableWorker::class.java)
-                    OneTimeWorkRequest.Builder(workerClass)
-                        .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
-                        .addTag(tag)
-                        .setInputData(inputData)
-                        .build()
-                } catch (_: Exception) {
-                    null
-                }
-
-                if (request != null) {
-                    workManager.enqueueUniqueWork(
-                        tag,
-                        ExistingWorkPolicy.REPLACE,
-                        request
+                // 2. Schedule WorkManager fallback
+                if (workManager != null) {
+                    val tag = "assignment_${assignment.id}"
+                    val inputData = workDataOf(
+                        "assignment_id" to assignment.id,
+                        "assignment_title" to assignment.title,
+                        "assignment_deadline" to assignment.deadline
                     )
+
+                    val request = try {
+                        val workerClass = Class.forName("com.studentos.feature.assignments.worker.AssignmentReminderWorker")
+                            .asSubclass(androidx.work.ListenableWorker::class.java)
+                        OneTimeWorkRequest.Builder(workerClass)
+                            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+                            .addTag(tag)
+                            .setInputData(inputData)
+                            .build()
+                    } catch (_: Exception) {
+                        null
+                    }
+
+                    if (request != null) {
+                        workManager.enqueueUniqueWork(
+                            tag,
+                            ExistingWorkPolicy.REPLACE,
+                            request
+                        )
+                    }
                 }
             }
         }
@@ -137,7 +184,7 @@ class NotificationReschedulerImpl @Inject constructor(
 
     override suspend fun rescheduleContestReminders() {
         val isEnabled = settingsDao.get("notification_contest_reminder_enabled")?.toBooleanStrictOrNull() ?: true
-        val workManager = getWorkManager() ?: return
+        val workManager = getWorkManager()
 
         if (!isEnabled) {
             return
@@ -150,32 +197,48 @@ class NotificationReschedulerImpl @Inject constructor(
         for (contest in upcomingContests) {
             val delayMs = contest.contestDate - now
             if (delayMs > 0) {
-                val tag = "contest_${contest.id}"
-                val inputData = workDataOf(
-                    "contest_id" to contest.id,
-                    "contest_name" to contest.contestName,
-                    "platform" to "CP",
-                    "contest_date" to contest.contestDate
+                val dateText = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(contest.contestDate))
+
+                // 1. Schedule exact alarm with AlarmManager
+                exactAlarmScheduler.scheduleExactAlarm(
+                    requestCode = (30_000 + contest.id).toInt(),
+                    triggerEpochMs = contest.contestDate,
+                    channelId = NotificationChannelRegistry.CHANNEL_CONTEST_REMINDER,
+                    notificationId = (300_000 + contest.id).toInt(),
+                    title = "Upcoming Contest: ${contest.contestName}",
+                    message = "Platform: CP | Starts at $dateText",
+                    route = "coding/cp-dashboard"
                 )
 
-                val request = try {
-                    val workerClass = Class.forName("com.studentos.core.sync.worker.ContestReminderWorker")
-                        .asSubclass(androidx.work.ListenableWorker::class.java)
-                    OneTimeWorkRequest.Builder(workerClass)
-                        .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
-                        .addTag(tag)
-                        .setInputData(inputData)
-                        .build()
-                } catch (_: Exception) {
-                    null
-                }
-
-                if (request != null) {
-                    workManager.enqueueUniqueWork(
-                        tag,
-                        ExistingWorkPolicy.REPLACE,
-                        request
+                // 2. Schedule WorkManager fallback
+                if (workManager != null) {
+                    val tag = "contest_${contest.id}"
+                    val inputData = workDataOf(
+                        "contest_id" to contest.id,
+                        "contest_name" to contest.contestName,
+                        "platform" to "CP",
+                        "contest_date" to contest.contestDate
                     )
+
+                    val request = try {
+                        val workerClass = Class.forName("com.studentos.core.sync.worker.ContestReminderWorker")
+                            .asSubclass(androidx.work.ListenableWorker::class.java)
+                        OneTimeWorkRequest.Builder(workerClass)
+                            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+                            .addTag(tag)
+                            .setInputData(inputData)
+                            .build()
+                    } catch (_: Exception) {
+                        null
+                    }
+
+                    if (request != null) {
+                        workManager.enqueueUniqueWork(
+                            tag,
+                            ExistingWorkPolicy.REPLACE,
+                            request
+                        )
+                    }
                 }
             }
         }

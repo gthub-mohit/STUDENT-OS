@@ -1,5 +1,7 @@
 package com.studentos.core.notifications.di
 
+import com.studentos.core.notifications.alarm.ExactAlarmScheduler
+import com.studentos.core.notifications.alarm.ExactAlarmSchedulerImpl
 import com.studentos.core.notifications.dispatcher.NotificationDispatcher
 import com.studentos.core.notifications.dispatcher.NotificationDispatcherImpl
 import com.studentos.core.notifications.scheduler.NotificationRescheduler
@@ -25,4 +27,10 @@ abstract class NotificationsModule {
     abstract fun bindNotificationRescheduler(
         impl: NotificationReschedulerImpl
     ): NotificationRescheduler
+
+    @Binds
+    @Singleton
+    abstract fun bindExactAlarmScheduler(
+        impl: ExactAlarmSchedulerImpl
+    ): ExactAlarmScheduler
 }

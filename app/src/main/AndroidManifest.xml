@@ -25,6 +25,11 @@
     <!-- Task 7.x: Reschedule alarms after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Task 7.x: Exact Alarm & WakeLock for time-sensitive reminders -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Task 2.1: Camera access for OCR timetable import -->
     <uses-permission android:name="android.permission.CAMERA" />
 
@@ -85,6 +90,13 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!--
+            BroadcastReceiver for AlarmManager exact background reminders.
+        -->
+        <receiver
+            android:name="com.studentos.core.notifications.receiver.NotificationAlarmReceiver"
+            android:exported="false" />
 
         <!--
             WorkManager initialisation via HiltWorkerFactory (task 0.3).
