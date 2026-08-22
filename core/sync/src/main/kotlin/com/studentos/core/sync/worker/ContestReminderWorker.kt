@@ -1,13 +1,12 @@
 package com.studentos.core.sync.worker
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.studentos.core.database.dao.SettingsDao
+import com.studentos.core.notifications.channel.NotificationChannelRegistry
+import com.studentos.core.notifications.dispatcher.NotificationDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.text.SimpleDateFormat
@@ -17,32 +16,19 @@ import java.util.Locale
 @HiltWorker
 class ContestReminderWorker @AssistedInject constructor(
     @Assisted context: Context,
-    @Assisted params: WorkerParameters
+    @Assisted params: WorkerParameters,
+    private val settingsDao: SettingsDao,
+    private val notificationDispatcher: NotificationDispatcher
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        val isEnabled = settingsDao.get("notification_contest_reminder_enabled")?.toBooleanStrictOrNull() ?: true
+        if (!isEnabled) return Result.success()
+
         val contestId = inputData.getLong(KEY_CONTEST_ID, -1L)
         val contestName = inputData.getString(KEY_CONTEST_NAME) ?: "Upcoming Contest"
         val platform = inputData.getString(KEY_PLATFORM) ?: "Competitive Programming"
         val contestDate = inputData.getLong(KEY_CONTEST_DATE, 0L)
-
-        postNotification(contestId, contestName, platform, contestDate)
-        return Result.success()
-    }
-
-    private fun postNotification(contestId: Long, contestName: String, platform: String, contestDate: Long) {
-        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            ?: return
-
-        val channelId = CHANNEL_ID
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Contest Reminders",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            notificationManager.createNotificationChannel(channel)
-        }
 
         val dateText = if (contestDate > 0L) {
             SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(contestDate))
@@ -50,20 +36,20 @@ class ContestReminderWorker @AssistedInject constructor(
             "Soon"
         }
 
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Upcoming Contest: $contestName")
-            .setContentText("Platform: $platform | Starts at $dateText")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
+        val notificationId = if (contestId > 0L) (300_000 + contestId).toInt() else System.currentTimeMillis().toInt()
 
-        val notificationId = if (contestId > 0L) contestId.toInt() else System.currentTimeMillis().toInt()
-        notificationManager.notify(notificationId, notification)
+        notificationDispatcher.postNotification(
+            channelId = NotificationChannelRegistry.CHANNEL_CONTEST_REMINDER,
+            notificationId = notificationId,
+            title = "Upcoming Contest: $contestName",
+            message = "Platform: $platform | Starts at $dateText",
+            route = "coding/cp-dashboard"
+        )
+
+        return Result.success()
     }
 
     companion object {
-        const val CHANNEL_ID = "CONTEST_REMINDER"
         const val KEY_CONTEST_ID = "contest_id"
         const val KEY_CONTEST_NAME = "contest_name"
         const val KEY_PLATFORM = "platform"

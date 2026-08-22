@@ -27,6 +27,7 @@ android {
 dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:events"))
+    implementation(project(":core:notifications"))
 
     // Hilt
     implementation(libs.hilt.android)

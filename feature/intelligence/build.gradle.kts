@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:events"))
     implementation(project(":core:intelligence"))
+    implementation(project(":core:notifications"))
 
     // Hilt & WorkManager
     implementation(libs.hilt.android)

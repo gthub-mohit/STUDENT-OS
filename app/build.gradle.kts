@@ -123,7 +123,7 @@ dependencies {
     // implementation(project(":core:ui"))
     // implementation(project(":core:events"))
     // implementation(project(":core:intelligence"))
-    // implementation(project(":core:notifications"))
+    implementation(project(":core:notifications"))
     // implementation(project(":core:sync"))
     implementation(project(":feature:attendance"))
     implementation(project(":feature:assignments"))

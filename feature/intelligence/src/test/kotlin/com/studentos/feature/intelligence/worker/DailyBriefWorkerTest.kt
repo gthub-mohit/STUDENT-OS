@@ -3,6 +3,8 @@ package com.studentos.feature.intelligence.worker
 import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
+import com.studentos.core.database.dao.SettingsDao
+import com.studentos.core.notifications.dispatcher.NotificationDispatcher
 import com.studentos.feature.intelligence.domain.model.DailyBrief
 import com.studentos.feature.intelligence.orchestrator.IntelligenceOrchestrator
 import io.mockk.coEvery
@@ -22,6 +24,8 @@ class DailyBriefWorkerTest {
     private val context: Context = mockk(relaxed = true)
     private val workerParams: WorkerParameters = mockk(relaxed = true)
     private val orchestrator: IntelligenceOrchestrator = mockk()
+    private val settingsDao: SettingsDao = mockk(relaxed = true)
+    private val notificationDispatcher: NotificationDispatcher = mockk(relaxed = true)
     private val fixedInstant = Instant.parse("2026-08-01T10:00:00Z")
     private val clock: Clock = Clock.fixed(fixedInstant, ZoneId.of("UTC"))
 
@@ -30,10 +34,13 @@ class DailyBriefWorkerTest {
     @Before
     fun setUp() {
         coEvery { workerParams.runAttemptCount } returns 0
+        coEvery { settingsDao.get(any()) } returns "true"
         worker = DailyBriefWorker(
             context = context,
             params = workerParams,
             orchestrator = orchestrator,
+            settingsDao = settingsDao,
+            notificationDispatcher = notificationDispatcher,
             clock = clock
         )
     }
@@ -53,6 +60,15 @@ class DailyBriefWorkerTest {
 
         assertEquals(ListenableWorker.Result.success(), result)
         coVerify(exactly = 1) { orchestrator.generateMorningBrief(today) }
+        coVerify(exactly = 1) {
+            notificationDispatcher.postNotification(
+                channelId = any(),
+                notificationId = any(),
+                title = any(),
+                message = any(),
+                route = any()
+            )
+        }
     }
 
     @Test

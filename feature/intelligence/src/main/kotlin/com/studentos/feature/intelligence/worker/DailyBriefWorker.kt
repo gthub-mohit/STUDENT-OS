@@ -7,6 +7,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.studentos.core.database.dao.SettingsDao
+import com.studentos.core.notifications.channel.NotificationChannelRegistry
+import com.studentos.core.notifications.dispatcher.NotificationDispatcher
 import com.studentos.feature.intelligence.orchestrator.IntelligenceOrchestrator
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -21,6 +24,8 @@ class DailyBriefWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val orchestrator: IntelligenceOrchestrator,
+    private val settingsDao: SettingsDao,
+    private val notificationDispatcher: NotificationDispatcher,
     private val clock: Clock
 ) : CoroutineWorker(context, params) {
 
@@ -29,6 +34,18 @@ class DailyBriefWorker @AssistedInject constructor(
 
         try {
             orchestrator.generateMorningBrief(today)
+
+            val isEnabled = settingsDao.get("notification_daily_brief_enabled")?.toBooleanStrictOrNull() ?: true
+            if (isEnabled) {
+                notificationDispatcher.postNotification(
+                    channelId = NotificationChannelRegistry.CHANNEL_DAILY_BRIEF,
+                    notificationId = 400_001,
+                    title = "Your Daily Brief is Ready",
+                    message = "Review today's schedule and focus priorities.",
+                    route = "intelligence/daily-brief?date=$today"
+                )
+            }
+
             Result.success()
         } catch (e: Exception) {
             if (runAttemptCount < MAX_RETRIES) {

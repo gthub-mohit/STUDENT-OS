@@ -32,6 +32,7 @@ android {
 dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:events"))
+    implementation(project(":core:notifications"))
 
     // Compose BOM & UI runtime
     implementation(platform(libs.compose.bom))
