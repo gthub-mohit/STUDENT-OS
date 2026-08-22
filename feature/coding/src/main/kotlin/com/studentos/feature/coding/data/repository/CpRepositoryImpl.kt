@@ -160,13 +160,14 @@ class CpRepositoryImpl @Inject constructor(
                         existingId = existingId,
                         syncedAtMs = syncedAtMs
                     )
-                    if (mappedProfile != null) {
-                        cpProfileDao.upsert(mappedProfile)
-                    }
+                    val profileId = if (mappedProfile != null) {
+                        val insertedId = cpProfileDao.upsert(mappedProfile)
+                        if (existingId > 0) existingId else insertedId
+                    } else existingId
 
                     val mappedContests = CodeChefMapper.mapContests(
                         dtos = response.ratingData,
-                        profileId = existingId
+                        profileId = profileId
                     )
                     if (mappedContests.isNotEmpty()) {
                         cpContestDao.upsertContests(mappedContests)
@@ -194,14 +195,14 @@ class CpRepositoryImpl @Inject constructor(
                         rank = userDto?.rank,
                         contestCount = userRating.result?.size
                     )
-
-                    if (mappedProfile != null) {
-                        cpProfileDao.upsert(mappedProfile)
-                    }
+                    val profileId = if (mappedProfile != null) {
+                        val insertedId = cpProfileDao.upsert(mappedProfile)
+                        if (existingId > 0) existingId else insertedId
+                    } else existingId
 
                     val mappedContests = CodeforcesMapper.mapContests(
                         dtos = userRating.result,
-                        profileId = existingId
+                        profileId = profileId
                     )
                     if (mappedContests.isNotEmpty()) {
                         cpContestDao.upsertContests(mappedContests)

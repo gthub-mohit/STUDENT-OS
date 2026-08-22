@@ -54,10 +54,8 @@ object SyncModule {
     @Provides
     @Singleton
     fun provideCodeChefApiService(
-        @Named("cp") retrofit: Retrofit
-    ): CodeChefApiService {
-        return retrofit.create(CodeChefApiService::class.java)
-    }
+        impl: com.studentos.core.sync.api.CodeChefApiServiceImpl
+    ): CodeChefApiService = impl
 
     @Provides
     @Singleton

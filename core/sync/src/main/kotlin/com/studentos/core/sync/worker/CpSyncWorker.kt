@@ -66,13 +66,14 @@ class CpSyncWorker @AssistedInject constructor(
                             existingId = profile.id,
                             syncedAtMs = now
                         )
-                        if (mappedProfile != null) {
-                            cpProfileDao.upsert(mappedProfile)
-                        }
+                        val profileId = if (mappedProfile != null) {
+                            val upsertedId = cpProfileDao.upsert(mappedProfile)
+                            if (profile.id > 0) profile.id else upsertedId
+                        } else profile.id
 
                         val mappedContests = CodeChefMapper.mapContests(
                             dtos = response.ratingData,
-                            profileId = profile.id
+                            profileId = profileId
                         )
                         if (mappedContests.isNotEmpty()) {
                             cpContestDao.upsertContests(mappedContests)
@@ -95,13 +96,14 @@ class CpSyncWorker @AssistedInject constructor(
                             existingId = profile.id,
                             syncedAtMs = now
                         )
-                        if (mappedProfile != null) {
-                            cpProfileDao.upsert(mappedProfile)
-                        }
+                        val profileId = if (mappedProfile != null) {
+                            val upsertedId = cpProfileDao.upsert(mappedProfile)
+                            if (profile.id > 0) profile.id else upsertedId
+                        } else profile.id
 
                         val mappedContests = CodeforcesMapper.mapContests(
                             dtos = userRating.result,
-                            profileId = profile.id
+                            profileId = profileId
                         )
                         if (mappedContests.isNotEmpty()) {
                             cpContestDao.upsertContests(mappedContests)

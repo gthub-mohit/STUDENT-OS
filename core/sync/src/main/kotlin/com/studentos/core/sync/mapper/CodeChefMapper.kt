@@ -21,12 +21,17 @@ object CodeChefMapper {
             ?: return null
 
         val rating = dto?.currentRating ?: dto?.rating
+        val highestRating = dto?.ratingData?.mapNotNull { it.rating }?.maxOrNull() ?: rating
+        val contestCount = dto?.ratingData?.size
 
         return CpProfileEntity(
             id = existingId,
             platform = CpProfileEntity.PLATFORM_CODECHEF,
             handle = handle,
             currentRating = rating?.takeIf { it >= 0 },
+            highestRating = highestRating?.takeIf { it >= 0 },
+            rank = dto?.stars,
+            contestCount = contestCount,
             lastSyncedAt = syncedAtMs
         )
     }
@@ -60,10 +65,15 @@ object CodeChefMapper {
     private fun parseDateStringToEpochMs(dateStr: String?): Long? {
         if (dateStr.isNullOrBlank()) return null
         return try {
-            OffsetDateTime.parse(dateStr).toInstant().toEpochMilli()
+            val isoStr = dateStr.trim().replace(' ', 'T')
+            try {
+                java.time.LocalDateTime.parse(isoStr).toInstant(ZoneOffset.UTC).toEpochMilli()
+            } catch (_: Exception) {
+                OffsetDateTime.parse(isoStr).toInstant().toEpochMilli()
+            }
         } catch (_: Exception) {
             try {
-                LocalDate.parse(dateStr).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                LocalDate.parse(dateStr.trim().split(" ")[0]).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
             } catch (_: Exception) {
                 null
             }
