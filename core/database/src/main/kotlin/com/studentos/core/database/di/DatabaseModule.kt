@@ -75,20 +75,6 @@ object DatabaseModule {
                 MIGRATION_2_5,
                 MIGRATION_1_5
             )
-            .addCallback(object : RoomDatabase.Callback() {
-                override fun onCreate(db: SupportSQLiteDatabase) {
-                    super.onCreate(db)
-                    try {
-                        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
-                    } catch (_: Throwable) {}
-                }
-                override fun onOpen(db: SupportSQLiteDatabase) {
-                    super.onOpen(db)
-                    try {
-                        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_next_action ON project_tasks(project_id) WHERE is_next_action = 1 AND is_parallel = 0")
-                    } catch (_: Throwable) {}
-                }
-            })
             .build()
     }
 

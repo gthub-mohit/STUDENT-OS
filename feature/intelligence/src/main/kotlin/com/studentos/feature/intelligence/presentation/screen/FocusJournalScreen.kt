@@ -1,12 +1,14 @@
 package com.studentos.feature.intelligence.presentation.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,15 +21,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -36,12 +41,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -62,12 +67,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.studentos.core.database.entity.ActivityLogEntity
 import com.studentos.core.database.entity.CommitmentEntity
 import com.studentos.core.database.entity.GoalEntity
 import com.studentos.core.database.entity.JournalEntryEntity
+import com.studentos.core.ui.component.ActionIconButton
+import com.studentos.core.ui.component.PriorityBadge
+import com.studentos.core.ui.component.SectionHeader
+import com.studentos.core.ui.component.StatusPill
+import com.studentos.core.ui.component.StudentOsEmptyState
+import com.studentos.core.ui.theme.StudentOsTheme
 import com.studentos.feature.intelligence.domain.model.EditableActivity
 import com.studentos.feature.intelligence.domain.model.EditableCommitment
 import com.studentos.feature.intelligence.presentation.state.ExtractionPreview
@@ -93,6 +105,7 @@ fun FocusJournalRoute(
         onInputChanged = viewModel::onRawInputChanged,
         onSubmitExtraction = viewModel::submitForExtraction,
         onSaveNoteOnly = viewModel::saveRawNoteOnly,
+        onExtractEntry = viewModel::extractExistingJournalEntry,
         onUpdateActivity = viewModel::updateActivity,
         onRemoveActivity = viewModel::removeActivity,
         onAddActivity = viewModel::addEmptyActivity,
@@ -115,6 +128,7 @@ fun FocusJournalScreen(
     onInputChanged: (String) -> Unit,
     onSubmitExtraction: () -> Unit,
     onSaveNoteOnly: () -> Unit,
+    onExtractEntry: (JournalEntryEntity) -> Unit,
     onUpdateActivity: (String, (EditableActivity) -> EditableActivity) -> Unit,
     onRemoveActivity: (String) -> Unit,
     onAddActivity: () -> Unit,
@@ -127,9 +141,10 @@ fun FocusJournalScreen(
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = StudentOsTheme.colors
     val snackbarHostState = remember { SnackbarHostState() }
     val todayFormatted = remember {
-        LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
+        LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault()))
     }
 
     LaunchedEffect(uiState.userMessage) {
@@ -154,40 +169,41 @@ fun FocusJournalScreen(
                         Text(
                             text = "Focus & Journal",
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.textPrimary
                         )
                         Text(
                             text = todayFormatted,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = colors.textSecondary
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
+                    ActionIconButton(
+                        icon = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        onClick = onSettingsClick
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = colors.appBackground,
+                    titleContentColor = colors.textPrimary
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = colors.appBackground,
         modifier = modifier
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item { Spacer(modifier = Modifier.height(4.dp)) }
-
             // ── Section 1: Daily Journal Input ─────────────────────────────────
             item {
                 JournalInputCard(
@@ -220,17 +236,19 @@ fun FocusJournalScreen(
 
             // ── Section 3: Today's Confirmed Activities ────────────────────────
             item {
-                Text(
-                    text = "Today's Accomplishments",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                SectionHeader(
+                    title = "Today's Accomplishments",
+                    count = uiState.todayActivities.size,
+                    icon = Icons.Default.CheckCircle
                 )
             }
 
             if (uiState.todayActivities.isEmpty()) {
                 item {
-                    EmptyStateCard(
-                        message = "No activities confirmed for today yet. Write in your journal above to log your accomplishments!"
+                    StudentOsEmptyState(
+                        icon = Icons.Default.CheckCircle,
+                        title = "No Accomplishments Logged",
+                        description = "Extract your daily notes or confirm activities above to log accomplishments."
                     )
                 }
             } else {
@@ -244,17 +262,19 @@ fun FocusJournalScreen(
 
             // ── Section 4: Pending Commitments & Deadlines ──────────────────────
             item {
-                Text(
-                    text = "Pending Commitments",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                SectionHeader(
+                    title = "Pending Commitments",
+                    count = uiState.pendingCommitments.size,
+                    icon = Icons.AutoMirrored.Filled.List
                 )
             }
 
             if (uiState.pendingCommitments.isEmpty()) {
                 item {
-                    EmptyStateCard(
-                        message = "No pending commitments right now. All caught up!"
+                    StudentOsEmptyState(
+                        icon = Icons.Default.Star,
+                        title = "All Caught Up",
+                        description = "No outstanding commitments or deadlines pending."
                     )
                 }
             } else {
@@ -268,26 +288,30 @@ fun FocusJournalScreen(
 
             // ── Section 5: Journal History ─────────────────────────────────────
             item {
-                Text(
-                    text = "Journal History",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                SectionHeader(
+                    title = "Journal History",
+                    count = uiState.recentJournalEntries.size,
+                    icon = Icons.Default.DateRange
                 )
             }
 
             if (uiState.recentJournalEntries.isEmpty()) {
                 item {
-                    EmptyStateCard(
-                        message = "No journal history recorded yet."
+                    StudentOsEmptyState(
+                        icon = Icons.Default.Edit,
+                        title = "No Journal Notes Recorded",
+                        description = "Notes and daily summaries will be archived here."
                     )
                 }
             } else {
                 items(uiState.recentJournalEntries.take(10), key = { it.id }) { entry ->
-                    JournalHistoryItem(entry = entry)
+                    JournalHistoryItem(
+                        entry = entry,
+                        isExtracting = uiState.isExtracting,
+                        onExtractClick = { onExtractEntry(entry) }
+                    )
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 }
@@ -304,93 +328,164 @@ fun JournalInputCard(
     onSaveNoteOnly: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = StudentOsTheme.colors
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        colors = CardDefaults.cardColors(containerColor = colors.cardSurface),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(colors.badgeVioletBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = colors.brightAccent,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                    Text(
+                        text = "Daily Journal & Log",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary
+                    )
+                }
+
+                if (isOfflineMode) {
+                    Surface(
+                        color = colors.destructiveBg,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, colors.destructiveBorder)
+                    ) {
+                        Text(
+                            text = "Offline Mode",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.destructiveText,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Text Input Field — compact ~3 lines
+            OutlinedTextField(
+                value = rawInput,
+                onValueChange = onInputChanged,
+                placeholder = {
+                    Text(
+                        "Log your tasks, study sessions, or commitments...\n(e.g., 'Solved 4 Array problems in 45m. Submit ML assignment by Friday.')",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textMuted
+                    )
+                },
+                minLines = 3,
+                maxLines = 5,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isExtracting,
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.primaryCta,
+                    unfocusedBorderColor = colors.innerBorder,
+                    focusedContainerColor = colors.innerSurface,
+                    unfocusedContainerColor = colors.innerSurface,
+                    focusedTextColor = colors.textPrimary,
+                    unfocusedTextColor = colors.textPrimary
+                )
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Bottom Action Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Daily Journal & Log",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    text = "✦ AI auto-tracks goals",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.brightAccent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-                if (isOfflineMode) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(8.dp)
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Secondary action: Save note without extraction
+                    OutlinedButton(
+                        onClick = onSaveNoteOnly,
+                        enabled = rawInput.isNotBlank() && !isExtracting,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, colors.innerBorder),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = colors.textSecondary,
+                            disabledContentColor = colors.textMuted
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(34.dp)
                     ) {
-                        Text(
-                            text = "Offline Mode",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
+                        Text("Save Note", style = MaterialTheme.typography.labelMedium)
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = rawInput,
-                onValueChange = onInputChanged,
-                placeholder = {
-                    Text(
-                        "Log what you accomplished, studied, or plan to do... (e.g. 'Solved 3 LeetCode problems in 45m. Submit OS lab by Friday 5pm.')",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                minLines = 3,
-                maxLines = 6,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isExtracting,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(
-                    onClick = onSaveNoteOnly,
-                    enabled = rawInput.isNotBlank() && !isExtracting,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Save Note")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = onSubmitExtraction,
-                    enabled = rawInput.isNotBlank() && !isExtracting,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    if (isExtracting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Extracting...")
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Extract with AI")
+                    // Primary action: Extract with AI & log accomplishments
+                    Button(
+                        onClick = onSubmitExtraction,
+                        enabled = rawInput.isNotBlank() && !isExtracting,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.primaryCta,
+                            contentColor = Color.White,
+                            disabledContainerColor = colors.innerSurface,
+                            disabledContentColor = colors.textMuted
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        if (isExtracting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Extracting...", style = MaterialTheme.typography.labelMedium)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Extract & Log", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -413,81 +508,100 @@ fun ExtractionPreviewCard(
     onDiscard: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = StudentOsTheme.colors
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+        colors = CardDefaults.cardColors(containerColor = colors.cardSurface),
+        border = BorderStroke(1.5.dp, colors.primaryCta),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(colors.badgeVioletBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = colors.brightAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     Text(
                         text = "Verify Extracted Records",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = colors.textPrimary
                     )
                 }
 
-                TextButton(onClick = onDiscard) {
+                TextButton(
+                    onClick = onDiscard,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Discard",
-                        modifier = Modifier.size(16.dp)
+                        tint = colors.destructiveText,
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Discard")
+                    Text("Discard", color = colors.destructiveText, style = MaterialTheme.typography.labelMedium)
                 }
             }
 
             if (preview.summary.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = preview.summary,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    color = colors.textSecondary
                 )
             }
 
             if (preview.clarifications.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                    color = colors.innerSurface,
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp)
+                    border = BorderStroke(1.dp, colors.innerBorder),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
+                    Column(modifier = Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(16.dp)
+                                tint = colors.brightAccent,
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Clarifications & Notes:",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "Clarifications & Notes",
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.tertiary
+                                color = colors.brightAccent
                             )
                         }
                         preview.clarifications.forEach { note ->
                             Text(
                                 text = "• $note",
                                 style = MaterialTheme.typography.bodySmall,
+                                color = colors.textSecondary,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -495,7 +609,7 @@ fun ExtractionPreviewCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // ── Extracted Activities ───────────────────────────────────────────
             Row(
@@ -506,12 +620,13 @@ fun ExtractionPreviewCard(
                 Text(
                     text = "Activities (${preview.activities.size})",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = colors.brightAccent
                 )
                 TextButton(onClick = onAddActivity) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Activity", style = MaterialTheme.typography.labelSmall)
+                    Text("Add Activity", style = MaterialTheme.typography.labelSmall, color = colors.brightAccent)
                 }
             }
 
@@ -525,7 +640,7 @@ fun ExtractionPreviewCard(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // ── Extracted Commitments ──────────────────────────────────────────
             Row(
@@ -536,12 +651,13 @@ fun ExtractionPreviewCard(
                 Text(
                     text = "Commitments & Deadlines (${preview.commitments.size})",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textSecondary
                 )
                 TextButton(onClick = onAddCommitment) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Commitment", style = MaterialTheme.typography.labelSmall)
+                    Text("Add Commitment", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
                 }
             }
 
@@ -556,19 +672,23 @@ fun ExtractionPreviewCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Confirmation Actions
+            // Confirmation Action — Solid Violet Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
                 Button(
                     onClick = onConfirm,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(10.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.primaryCta,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(36.dp)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Confirm & Record", fontWeight = FontWeight.Bold)
+                    Text("Confirm & Record", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -582,10 +702,11 @@ fun EditableActivityItem(
     onUpdate: ((EditableActivity) -> EditableActivity) -> Unit,
     onDelete: () -> Unit
 ) {
+    val colors = StudentOsTheme.colors
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = colors.innerSurface,
         shape = RoundedCornerShape(10.dp),
-        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, colors.innerBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -595,14 +716,21 @@ fun EditableActivityItem(
                     onValueChange = { title -> onUpdate { it.copy(title = title) } },
                     label = { Text("Activity Description", style = MaterialTheme.typography.labelSmall) },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
+                        tint = colors.destructiveText,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -616,9 +744,16 @@ fun EditableActivityItem(
                 OutlinedTextField(
                     value = activity.activityType,
                     onValueChange = { type -> onUpdate { it.copy(activityType = type.uppercase()) } },
-                    label = { Text("Type (e.g. DSA, PROJECT)", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.weight(1.2f),
-                    singleLine = true
+                    label = { Text("Type", style = MaterialTheme.typography.labelSmall) },
+                    modifier = Modifier.weight(1.1f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
 
                 OutlinedTextField(
@@ -628,8 +763,15 @@ fun EditableActivityItem(
                         onUpdate { it.copy(metricDelta = delta) }
                     },
                     label = { Text("Count", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.weight(0.8f),
-                    singleLine = true
+                    modifier = Modifier.weight(0.9f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
 
                 OutlinedTextField(
@@ -638,10 +780,17 @@ fun EditableActivityItem(
                         val dur = durStr.toIntOrNull()
                         onUpdate { it.copy(durationMinutes = dur) }
                     },
-                    label = { Text("Duration (m)", style = MaterialTheme.typography.labelSmall) },
-                    placeholder = { Text("Unknown") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
+                    label = { Text("Dur (m)", style = MaterialTheme.typography.labelSmall) },
+                    placeholder = { Text("—") },
+                    modifier = Modifier.weight(0.9f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
             }
 
@@ -663,6 +812,7 @@ fun GoalSelectorRow(
     goals: List<GoalEntity>,
     onGoalSelected: (Long?) -> Unit
 ) {
+    val colors = StudentOsTheme.colors
     var expanded by remember { mutableStateOf(false) }
     val currentGoal = goals.find { it.id == selectedGoalId }
 
@@ -673,25 +823,31 @@ fun GoalSelectorRow(
         Text(
             text = "Linked Goal: ",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = colors.textSecondary
         )
         Box {
             Surface(
-                color = if (currentGoal != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(8.dp),
+                color = if (currentGoal != null) colors.badgeVioletBg else colors.innerSurface,
+                shape = RoundedCornerShape(6.dp),
+                border = BorderStroke(1.dp, if (currentGoal != null) colors.primaryCta else colors.innerBorder),
                 modifier = Modifier.clickable { expanded = true }
             ) {
                 Text(
                     text = currentGoal?.title ?: "None (Unlinked)",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (currentGoal != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    color = if (currentGoal != null) colors.brightAccent else colors.textMuted,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
 
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(colors.cardSurface)
+            ) {
                 DropdownMenuItem(
-                    text = { Text("None (Unlinked)") },
+                    text = { Text("None (Unlinked)", color = colors.textSecondary) },
                     onClick = {
                         onGoalSelected(null)
                         expanded = false
@@ -699,7 +855,7 @@ fun GoalSelectorRow(
                 )
                 goals.forEach { goal ->
                     DropdownMenuItem(
-                        text = { Text("${goal.title} (${goal.category})") },
+                        text = { Text("${goal.title} (${goal.category})", color = colors.textPrimary) },
                         onClick = {
                             onGoalSelected(goal.id)
                             expanded = false
@@ -717,10 +873,11 @@ fun EditableCommitmentItem(
     onUpdate: ((EditableCommitment) -> EditableCommitment) -> Unit,
     onDelete: () -> Unit
 ) {
+    val colors = StudentOsTheme.colors
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = colors.innerSurface,
         shape = RoundedCornerShape(10.dp),
-        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, colors.innerBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -730,14 +887,21 @@ fun EditableCommitmentItem(
                     onValueChange = { title -> onUpdate { it.copy(title = title) } },
                     label = { Text("Commitment Title", style = MaterialTheme.typography.labelSmall) },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
+                        tint = colors.destructiveText,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -756,7 +920,14 @@ fun EditableCommitmentItem(
                     label = { Text("Date (YYYY-MM-DD)", style = MaterialTheme.typography.labelSmall) },
                     placeholder = { Text("No deadline") },
                     modifier = Modifier.weight(1.2f),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
 
                 OutlinedTextField(
@@ -766,7 +937,14 @@ fun EditableCommitmentItem(
                     },
                     label = { Text("Priority", style = MaterialTheme.typography.labelSmall) },
                     modifier = Modifier.weight(0.9f),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primaryCta,
+                        unfocusedBorderColor = colors.innerBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    )
                 )
             }
         }
@@ -779,10 +957,12 @@ fun ActivityLogItem(
     goalTitle: String?,
     modifier: Modifier = Modifier
 ) {
+    val colors = StudentOsTheme.colors
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.cardSurface),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -792,15 +972,16 @@ fun ActivityLogItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(6.dp)
+                    color = colors.badgeVioletBg,
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(1.dp, colors.primaryCta.copy(alpha = 0.4f))
                 ) {
                     Text(
                         text = activity.activityType,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        color = colors.brightAccent,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                     )
                 }
 
@@ -810,7 +991,7 @@ fun ActivityLogItem(
                 Text(
                     text = timeFormatted,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colors.textMuted
                 )
             }
 
@@ -818,11 +999,12 @@ fun ActivityLogItem(
 
             Text(
                 text = activity.summary,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -831,13 +1013,15 @@ fun ActivityLogItem(
             ) {
                 if (activity.metricDelta > 0) {
                     Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(4.dp)
+                        color = colors.successBg,
+                        shape = RoundedCornerShape(4.dp),
+                        border = BorderStroke(1.dp, colors.successText.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = "+${if (activity.metricDelta % 1.0 == 0.0) activity.metricDelta.toInt().toString() else activity.metricDelta.toString()}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.successText,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -848,14 +1032,14 @@ fun ActivityLogItem(
                 Text(
                     text = durText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colors.textSecondary
                 )
 
                 if (!goalTitle.isNullOrBlank()) {
                     Text(
                         text = "• $goalTitle",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = colors.brightAccent,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -870,59 +1054,44 @@ fun CommitmentItem(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = StudentOsTheme.colors
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.cardSurface),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onComplete) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Mark Complete",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            ActionIconButton(
+                icon = Icons.Default.CheckCircle,
+                contentDescription = "Mark Complete",
+                onClick = onComplete,
+                tint = colors.primaryCta
+            )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = commitment.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val prioColor = when (commitment.priority) {
-                        "HIGH" -> MaterialTheme.colorScheme.error
-                        "LOW" -> MaterialTheme.colorScheme.outline
-                        else -> MaterialTheme.colorScheme.primary
-                    }
-                    Surface(
-                        color = prioColor.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = commitment.priority,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = prioColor,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+                    PriorityBadge(priority = commitment.priority)
 
                     val deadlineMs = commitment.deadline
                     if (deadlineMs != null) {
@@ -932,13 +1101,13 @@ fun CommitmentItem(
                         Text(
                             text = "Due: $deadlineStr",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = colors.textSecondary
                         )
                     } else {
                         Text(
                             text = "No deadline",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
+                            color = colors.textMuted
                         )
                     }
                 }
@@ -950,69 +1119,101 @@ fun CommitmentItem(
 @Composable
 fun JournalHistoryItem(
     entry: JournalEntryEntity,
+    isExtracting: Boolean,
+    onExtractClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = StudentOsTheme.colors
     Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.cardSurface),
+        border = BorderStroke(1.dp, colors.cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = entry.date,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                if (entry.structuredSummary != null) {
+                Surface(
+                    color = colors.innerSurface,
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(1.dp, colors.innerBorder)
+                ) {
                     Text(
-                        text = "Structured",
+                        text = entry.date,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                     )
+                }
+
+                if (entry.structuredSummary != null) {
+                    StatusPill(
+                        label = "Extracted",
+                        icon = Icons.Default.Check,
+                        containerColor = colors.successBg,
+                        contentColor = colors.successText,
+                        borderColor = colors.successText.copy(alpha = 0.3f)
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        StatusPill(
+                            label = "Raw Note",
+                            containerColor = colors.innerSurface,
+                            contentColor = colors.textMuted,
+                            borderColor = colors.innerBorder
+                        )
+
+                        // Discoverable extraction action for unextracted notes
+                        Button(
+                            onClick = onExtractClick,
+                            enabled = !isExtracting,
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.primaryCta,
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(24.dp)
+                        ) {
+                            Text("Extract with AI", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = entry.rawLog,
                 style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary,
                 maxLines = 3
             )
 
             if (!entry.structuredSummary.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Summary: ${entry.structuredSummary}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    color = colors.innerSurface,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, colors.innerBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Summary: ${entry.structuredSummary}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-fun EmptyStateCard(message: String, modifier: Modifier = Modifier) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Box(
-            modifier = Modifier.padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

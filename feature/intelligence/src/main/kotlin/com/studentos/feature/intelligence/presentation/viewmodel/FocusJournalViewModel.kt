@@ -56,7 +56,7 @@ class FocusJournalViewModel @Inject constructor(
                 _uiState.update { it.copy(todayActivities = logs) }
             }
             .catch { e ->
-                _uiState.update { it.copy(errorMessage = "Failed to load activities: ${e.message}") }
+                reportDatabaseError(e, "activities")
             }
             .launchIn(viewModelScope)
 
@@ -66,7 +66,7 @@ class FocusJournalViewModel @Inject constructor(
                 _uiState.update { it.copy(pendingCommitments = commitments) }
             }
             .catch { e ->
-                _uiState.update { it.copy(errorMessage = "Failed to load commitments: ${e.message}") }
+                reportDatabaseError(e, "commitments")
             }
             .launchIn(viewModelScope)
 
@@ -76,7 +76,7 @@ class FocusJournalViewModel @Inject constructor(
                 _uiState.update { it.copy(recentJournalEntries = entries) }
             }
             .catch { e ->
-                _uiState.update { it.copy(errorMessage = "Failed to load journal entries: ${e.message}") }
+                reportDatabaseError(e, "journal entries")
             }
             .launchIn(viewModelScope)
 
@@ -87,6 +87,21 @@ class FocusJournalViewModel @Inject constructor(
             }
             .catch { /* non-fatal */ }
             .launchIn(viewModelScope)
+    }
+
+    private fun reportDatabaseError(e: Throwable, context: String) {
+        _uiState.update { current ->
+            if (current.errorMessage == null) {
+                current.copy(errorMessage = "Unable to load local $context. Tap to retry.")
+            } else {
+                current
+            }
+        }
+    }
+
+    fun retryDatabaseLoad() {
+        _uiState.update { it.copy(errorMessage = null) }
+        observeDatabaseData()
     }
 
     fun onRawInputChanged(input: String) {
@@ -162,6 +177,68 @@ class FocusJournalViewModel @Inject constructor(
         }
     }
 
+    fun extractExistingJournalEntry(entry: JournalEntryEntity) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isExtracting = true,
+                    errorMessage = null,
+                    userMessage = null
+                )
+            }
+
+            when (val result = extractJournalUseCase(entry.rawLog, dateOverride = entry.date)) {
+                is ExtractionResult.Success -> {
+                    val editableActivities = result.response.activities.map { dto ->
+                        EditableActivity(
+                            title = dto.title,
+                            activityType = dto.activityType,
+                            metricDelta = dto.metricDelta,
+                            durationMinutes = dto.durationMinutes,
+                            matchedGoalId = dto.matchedGoalId,
+                            confidence = dto.confidence
+                        )
+                    }
+
+                    val editableCommitments = result.response.commitments.map { dto ->
+                        EditableCommitment(
+                            title = dto.title,
+                            category = dto.category,
+                            targetDate = dto.targetDate,
+                            targetTime = dto.targetTime,
+                            priority = dto.priority ?: "MEDIUM",
+                            estimatedMinutes = dto.estimatedMinutes
+                        )
+                    }
+
+                    _uiState.update { state ->
+                        state.copy(
+                            isExtracting = false,
+                            preview = ExtractionPreview(
+                                journalEntryId = result.journalEntryId,
+                                summary = result.response.summary ?: "Journal log processed.",
+                                activities = editableActivities,
+                                commitments = editableCommitments,
+                                clarifications = result.response.clarifications,
+                                originalInput = entry.rawLog
+                            ),
+                            userMessage = "AI extracted items from journal note. Please review and confirm to log accomplishments."
+                        )
+                    }
+                }
+                is ExtractionResult.Error -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            isExtracting = false,
+                            errorMessage = result.message,
+                            isOfflineMode = result.isOffline
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     fun saveRawNoteOnly() {
         val currentInput = _uiState.value.rawInput.trim()
         if (currentInput.isBlank()) {
@@ -185,7 +262,7 @@ class FocusJournalViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         rawInput = "",
-                        userMessage = "Journal note saved locally.",
+                        userMessage = "Journal note saved. Tap 'Extract with AI' anytime to log accomplishments.",
                         errorMessage = null
                     )
                 }

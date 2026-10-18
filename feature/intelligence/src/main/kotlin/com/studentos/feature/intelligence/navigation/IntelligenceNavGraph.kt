@@ -20,15 +20,6 @@ fun NavGraphBuilder.intelligenceNavGraph(navController: NavHostController) {
         )
     }
 
-    // ── Trajectory & Goals Screen ──────────────────────────────────────────
-    composable(route = "trajectory") {
-        com.studentos.feature.intelligence.presentation.screen.TrajectoryGoalsRoute(
-            onSettingsClick = {
-                navController.navigate("settings/main")
-            }
-        )
-    }
-
     // ── Home Screen ────────────────────────────────────────────────────────
     composable(route = "home") {
         HomeRoute(

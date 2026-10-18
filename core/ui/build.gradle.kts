@@ -26,5 +26,10 @@ android {
 }
 
 dependencies {
-    // Task 0.2: Compose BOM, Material 3, and shared component dependencies added here.
+    implementation(platform(libs.compose.bom))
+    api(libs.compose.ui)
+    api(libs.compose.ui.graphics)
+    api(libs.compose.ui.tooling.preview)
+    api(libs.compose.material3)
+    implementation(libs.androidx.core.ktx)
 }

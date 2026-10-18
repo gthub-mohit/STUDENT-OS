@@ -25,6 +25,10 @@ private fun safeAddColumn(db: SupportSQLiteDatabase, tableName: String, columnNa
 
 private fun migrateProjectTasksToV4(db: SupportSQLiteDatabase) {
     try {
+        try {
+            db.execSQL("DROP INDEX IF EXISTS `idx_one_next_action`")
+        } catch (_: Throwable) {}
+
         db.execSQL("""
             CREATE TABLE IF NOT EXISTS `project_tasks_temp_v4` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -135,6 +139,11 @@ val MIGRATION_1_4 = object : Migration(1, 4) {
 
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
+        // 0. Clean up any unmanaged partial index on project_tasks so Room schema validation succeeds
+        try {
+            db.execSQL("DROP INDEX IF EXISTS `idx_one_next_action`")
+        } catch (_: Throwable) {}
+
         // 1. Create goals table
         db.execSQL(
             """

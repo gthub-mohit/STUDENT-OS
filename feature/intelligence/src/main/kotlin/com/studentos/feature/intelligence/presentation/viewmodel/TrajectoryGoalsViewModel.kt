@@ -15,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -59,6 +60,13 @@ class TrajectoryGoalsViewModel @Inject constructor(
                     activeGoals = active,
                     archivedGoals = archived,
                     isLoading = false
+                )
+            }
+        }.catch { e ->
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "Failed to load goals: ${e.message}"
                 )
             }
         }.launchIn(viewModelScope)

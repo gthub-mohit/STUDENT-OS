@@ -1,3 +1,4 @@
+
 package com.studentos.feature.intelligence.presentation.state
 
 import com.studentos.core.database.entity.GoalEntity

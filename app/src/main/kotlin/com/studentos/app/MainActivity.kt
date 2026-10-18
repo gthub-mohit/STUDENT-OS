@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.studentos.app.navigation.AppNavHost
 import com.studentos.app.navigation.BottomNavBar
 import com.studentos.app.navigation.initDefaultModuleRegistry
+import com.studentos.core.ui.theme.StudentOsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -107,7 +108,7 @@ private fun StudentOsAppContent(
         }
     }
 
-    MaterialTheme {
+    StudentOsTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background

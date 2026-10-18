@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,18 +28,31 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import com.studentos.core.ui.component.ActionIconButton
+import com.studentos.core.ui.component.StudentOsEmptyState
+import com.studentos.core.ui.theme.StudentOsTheme
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -50,6 +64,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -238,25 +254,29 @@ fun TrajectoryGoalsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(32.dp),
+                            .padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = if (uiState.selectedTab == GoalsTab.ACTIVE) {
-                                "No active goals tracked yet.\nTap '+' to create your first goal!"
-                            } else {
-                                "No archived goals."
-                            },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                        if (uiState.selectedTab == GoalsTab.ACTIVE) {
+                            StudentOsEmptyState(
+                                icon = Icons.Default.Star,
+                                title = "No Active Goals Tracked",
+                                description = "Set up your long-term milestones in DSA, System Design, or Courses with target metrics.",
+                                actionLabel = "Create Goal",
+                                onActionClick = onOpenCreate
+                            )
+                        } else {
+                            StudentOsEmptyState(
+                                icon = Icons.Default.CheckCircle,
+                                title = "No Archived Goals",
+                                description = "Goals you archive will be preserved here with their complete history."
+                            )
+                        }
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 112.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(currentList, key = { it.goal.id }) { goalProgress ->
@@ -271,7 +291,6 @@ fun TrajectoryGoalsScreen(
                                 onDelete = { onPromptDelete(goalProgress.goal) }
                             )
                         }
-                        item { Spacer(modifier = Modifier.height(72.dp)) }
                     }
                 }
             }
@@ -333,7 +352,8 @@ fun GoalCard(
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = StudentOsTheme.extendedColors.cardSurface),
+        border = BorderStroke(1.dp, StudentOsTheme.extendedColors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -346,27 +366,28 @@ fun GoalCard(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = StudentOsTheme.extendedColors.violetBadgeBg,
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             text = goal.category,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            color = StudentOsTheme.extendedColors.brightAccent,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
 
                     Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(6.dp)
+                        color = StudentOsTheme.extendedColors.innerSurface,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, StudentOsTheme.extendedColors.innerBorder)
                     ) {
                         Text(
                             text = goal.metricType,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            color = StudentOsTheme.extendedColors.secondaryText,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
@@ -380,7 +401,8 @@ fun GoalCard(
             Text(
                 text = goal.title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = StudentOsTheme.extendedColors.primaryText
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -391,28 +413,21 @@ fun GoalCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val actualFormatted = if (progress.actualProgress % 1.0 == 0.0) {
-                    progress.actualProgress.toInt().toString()
-                } else {
-                    "%.1f".format(progress.actualProgress)
-                }
-                val targetFormatted = if (goal.targetValue % 1.0 == 0.0) {
-                    goal.targetValue.toInt().toString()
-                } else {
-                    "%.1f".format(goal.targetValue)
-                }
+                val actualFormatted = formatMetricValue(progress.actualProgress, goal.metricType)
+                val targetFormatted = formatMetricValue(goal.targetValue, goal.metricType)
+                val baselineFormatted = formatMetricValue(goal.startValue, goal.metricType)
 
                 Column {
                     Text(
                         text = "$actualFormatted / $targetFormatted ${goal.unit}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = StudentOsTheme.extendedColors.brightAccent
                     )
                     Text(
-                        text = "Baseline: ${goal.startValue} ${goal.unit} • ${progress.totalLogsCount} logs",
+                        text = "Baseline: $baselineFormatted ${goal.unit} • ${progress.totalLogsCount} logs",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = StudentOsTheme.extendedColors.secondaryText
                     )
                 }
 
@@ -420,7 +435,7 @@ fun GoalCard(
                     text = "%.1f%%".format(progress.progressPercentage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (progress.progressPercentage >= 100.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = if (progress.progressPercentage >= 100.0) StudentOsTheme.extendedColors.successText else StudentOsTheme.extendedColors.primaryText
                 )
             }
 
@@ -434,12 +449,11 @@ fun GoalCard(
                     .fillMaxWidth()
                     .height(8.dp),
                 color = when (progress.status) {
-                    GoalStatus.COMPLETED -> Color(0xFF10B981)
-                    GoalStatus.AHEAD -> Color(0xFF059669)
-                    GoalStatus.BEHIND -> Color(0xFFF59E0B)
-                    else -> MaterialTheme.colorScheme.primary
+                    GoalStatus.COMPLETED, GoalStatus.AHEAD -> StudentOsTheme.extendedColors.successText
+                    GoalStatus.BEHIND -> Color(0xFFFBBF24)
+                    else -> StudentOsTheme.extendedColors.primaryCta
                 },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                trackColor = StudentOsTheme.extendedColors.innerSurface,
                 drawStopIndicator = {}
             )
 
@@ -453,7 +467,7 @@ fun GoalCard(
                 Text(
                     text = "Target: ${dateFormat.format(Date(goal.targetDate))}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = StudentOsTheme.extendedColors.secondaryText
                 )
                 val remainingText = if (progress.daysRemaining != null && progress.daysRemaining > 0) {
                     "${progress.daysRemaining} days left"
@@ -466,7 +480,7 @@ fun GoalCard(
                     text = remainingText,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = StudentOsTheme.extendedColors.secondaryText
                 )
             }
 
@@ -480,7 +494,12 @@ fun GoalCard(
             ) {
                 OutlinedButton(
                     onClick = onToggleGraph,
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = StudentOsTheme.extendedColors.secondaryText
+                    ),
+                    border = BorderStroke(1.dp, StudentOsTheme.extendedColors.innerBorder),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = if (isGraphExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
@@ -488,28 +507,33 @@ fun GoalCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (isGraphExpanded) "Hide Graph" else "View Progress Graph", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        text = if (isGraphExpanded) "Hide Graph" else "View Progress",
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Goal", modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onToggleArchive) {
-                        Icon(
-                            imageVector = if (goal.isArchived) Icons.Default.Refresh else Icons.Default.CheckCircle,
-                            contentDescription = if (goal.isArchived) "Unarchive Goal" else "Archive Goal",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Goal",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ActionIconButton(
+                        icon = Icons.Default.Edit,
+                        contentDescription = "Edit Goal",
+                        onClick = onEdit
+                    )
+                    ActionIconButton(
+                        icon = if (goal.isArchived) Icons.Default.Refresh else Icons.Default.CheckCircle,
+                        contentDescription = if (goal.isArchived) "Unarchive Goal" else "Complete / Archive Goal",
+                        onClick = onToggleArchive,
+                        tint = if (goal.isArchived) StudentOsTheme.extendedColors.primaryText else StudentOsTheme.extendedColors.successText
+                    )
+                    ActionIconButton(
+                        icon = Icons.Default.Delete,
+                        contentDescription = "Delete Goal",
+                        onClick = onDelete,
+                        tint = StudentOsTheme.extendedColors.destructiveRed
+                    )
                 }
             }
 
@@ -538,46 +562,59 @@ fun InlineProgressGraph(
     val points = progress.historyPoints
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        color = StudentOsTheme.extendedColors.innerSurface,
         shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, StudentOsTheme.extendedColors.innerBorder),
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Graph Header & Legend
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Heading row
+            Text(
+                text = "Expected vs Actual Trajectory",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = StudentOsTheme.extendedColors.primaryText
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Legend row (separate row, non-wrapping)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Expected vs Actual Trajectory",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp, 2.dp)
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Actual", style = MaterialTheme.typography.labelSmall)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp, 2.dp)
-                                .background(MaterialTheme.colorScheme.outline)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Expected", style = MaterialTheme.typography.labelSmall)
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp, 3.dp)
+                            .background(StudentOsTheme.extendedColors.primaryCta, RoundedCornerShape(1.dp))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Actual Progress",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = StudentOsTheme.extendedColors.secondaryText,
+                        maxLines = 1
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp, 2.dp)
+                            .background(StudentOsTheme.extendedColors.mutedText, RoundedCornerShape(1.dp))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Expected Trajectory",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = StudentOsTheme.extendedColors.secondaryText,
+                        maxLines = 1
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Check edge cases where graph cannot be plotted
             if (goal.targetDate <= goal.startDate) {
@@ -591,9 +628,9 @@ fun InlineProgressGraph(
             }
 
             // Canvas Line Chart
-            val primaryColor = MaterialTheme.colorScheme.primary
-            val outlineColor = MaterialTheme.colorScheme.outline
-            val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            val primaryColor = StudentOsTheme.extendedColors.primaryCta
+            val outlineColor = StudentOsTheme.extendedColors.mutedText
+            val gridColor = StudentOsTheme.extendedColors.innerBorder
 
             Canvas(
                 modifier = Modifier
@@ -713,12 +750,12 @@ fun InlineProgressGraph(
                 Text(
                     text = "Start: ${dateFormat.format(Date(goal.startDate))}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = StudentOsTheme.extendedColors.secondaryText
                 )
                 Text(
                     text = "Target: ${dateFormat.format(Date(goal.targetDate))}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = StudentOsTheme.extendedColors.secondaryText
                 )
             }
 
@@ -727,7 +764,7 @@ fun InlineProgressGraph(
                 Text(
                     text = "• No confirmed activities logged yet. Trajectory represents planned expected progress.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = StudentOsTheme.extendedColors.secondaryText
                 )
             }
         }
@@ -738,32 +775,47 @@ fun InlineProgressGraph(
 
 @Composable
 fun GoalStatusBadge(status: GoalStatus, description: String, modifier: Modifier = Modifier) {
-    val (bgColor, textColor, label) = when (status) {
-        GoalStatus.COMPLETED -> Triple(Color(0xFFD1FAE5), Color(0xFF065F46), "COMPLETED")
-        GoalStatus.AHEAD -> Triple(Color(0xFFECFDF5), Color(0xFF047857), "AHEAD")
-        GoalStatus.ON_TRACK -> Triple(Color(0xFFEFF6FF), Color(0xFF1D4ED8), "ON TRACK")
-        GoalStatus.BEHIND -> Triple(Color(0xFFFEF3C7), Color(0xFFB45309), "BEHIND")
-        GoalStatus.NOT_STARTED -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, "UPCOMING")
-        GoalStatus.INSUFFICIENT_DATA -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, "INSUFFICIENT DATA")
+    val (bgColor, textColor, label, icon) = when (status) {
+        GoalStatus.COMPLETED -> Quadruple(StudentOsTheme.extendedColors.successBg, StudentOsTheme.extendedColors.successText, "COMPLETED", Icons.Default.CheckCircle)
+        GoalStatus.AHEAD -> Quadruple(StudentOsTheme.extendedColors.successBg, StudentOsTheme.extendedColors.successText, "AHEAD", Icons.Default.PlayArrow)
+        GoalStatus.ON_TRACK -> Quadruple(StudentOsTheme.extendedColors.violetBadgeBg, StudentOsTheme.extendedColors.brightAccent, "ON TRACK", Icons.Default.Check)
+        GoalStatus.BEHIND -> Quadruple(Color(0xFF451A03), Color(0xFFFBBF24), "BEHIND", Icons.Default.Warning)
+        GoalStatus.NOT_STARTED -> Quadruple(StudentOsTheme.extendedColors.innerSurface, StudentOsTheme.extendedColors.mutedText, "UPCOMING", Icons.Default.DateRange)
+        GoalStatus.INSUFFICIENT_DATA -> Quadruple(StudentOsTheme.extendedColors.innerSurface, StudentOsTheme.extendedColors.mutedText, "INSUFFICIENT DATA", Icons.Default.Info)
     }
 
     Surface(
         color = bgColor,
         shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, if (status == GoalStatus.ON_TRACK) StudentOsTheme.extendedColors.brightAccent.copy(alpha = 0.3f) else Color.Transparent),
         modifier = modifier
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.ExtraBold,
-            color = textColor,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = textColor
+            )
+        }
     }
 }
 
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
 // ── Goal Form Dialog (Create / Edit) ───────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalFormDialog(
     state: GoalDialogState,
@@ -786,8 +838,25 @@ fun GoalFormDialog(
     var category by remember { mutableStateOf(existingGoal?.category ?: "DSA") }
     var metricType by remember { mutableStateOf(existingGoal?.metricType ?: "COUNT") }
     var unit by remember { mutableStateOf(existingGoal?.unit ?: if (metricType == "COUNT") "questions" else "hours") }
-    var startValueStr by remember { mutableStateOf(existingGoal?.startValue?.toString() ?: "0.0") }
-    var targetValueStr by remember { mutableStateOf(existingGoal?.targetValue?.toString() ?: "100.0") }
+
+    var startValueStr by remember {
+        mutableStateOf(
+            if (existingGoal != null) {
+                formatMetricValue(existingGoal.startValue, existingGoal.metricType)
+            } else {
+                if (metricType == "COUNT") "0" else "0.0"
+            }
+        )
+    }
+    var targetValueStr by remember {
+        mutableStateOf(
+            if (existingGoal != null) {
+                formatMetricValue(existingGoal.targetValue, existingGoal.metricType)
+            } else {
+                if (metricType == "COUNT") "100" else "100.0"
+            }
+        )
+    }
 
     val startLocalDate = remember(defaultStartDate) {
         InstantToLocalDate(defaultStartDate)
@@ -800,26 +869,101 @@ fun GoalFormDialog(
     var targetDateStr by remember { mutableStateOf(targetLocalDate.format(dateFormatter)) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showTargetDatePicker by remember { mutableStateOf(false) }
+
+    if (showStartDatePicker) {
+        val currentStartEpoch = parseDateToEpoch(startDateStr) ?: defaultStartDate
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = currentStartEpoch
+        )
+        DatePickerDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { utcMillis ->
+                            val localDate = java.time.Instant.ofEpochMilli(utcMillis)
+                                .atZone(ZoneId.of("UTC"))
+                                .toLocalDate()
+                            startDateStr = localDate.format(dateFormatter)
+                        }
+                        showStartDatePicker = false
+                    }
+                ) {
+                    Text("OK", color = StudentOsTheme.extendedColors.primaryCta)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartDatePicker = false }) {
+                    Text("Cancel", color = StudentOsTheme.extendedColors.secondaryText)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTargetDatePicker) {
+        val currentTargetEpoch = parseDateToEpoch(targetDateStr) ?: defaultTargetDate
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = currentTargetEpoch
+        )
+        DatePickerDialog(
+            onDismissRequest = { showTargetDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { utcMillis ->
+                            val localDate = java.time.Instant.ofEpochMilli(utcMillis)
+                                .atZone(ZoneId.of("UTC"))
+                                .toLocalDate()
+                            targetDateStr = localDate.format(dateFormatter)
+                        }
+                        showTargetDatePicker = false
+                    }
+                ) {
+                    Text("OK", color = StudentOsTheme.extendedColors.primaryCta)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTargetDatePicker = false }) {
+                    Text("Cancel", color = StudentOsTheme.extendedColors.secondaryText)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
+            color = StudentOsTheme.extendedColors.cardSurface,
+            border = BorderStroke(1.dp, StudentOsTheme.extendedColors.cardBorder),
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 16.dp)
         ) {
             Column(
                 modifier = Modifier
+                    .verticalScroll(rememberScrollState())
                     .padding(20.dp)
                     .fillMaxWidth()
             ) {
                 Text(
                     text = if (isEdit) "Edit Goal" else "Create New Goal",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = StudentOsTheme.extendedColors.primaryText
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Title
+                // 1. Goal Title (full width)
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -829,94 +973,168 @@ fun GoalFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Category & Metric Type row
+                // 2. Category and Unit (two balanced columns)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OutlinedTextField(
                         value = category,
                         onValueChange = { category = it.uppercase() },
                         label = { Text("Category") },
-                        placeholder = { Text("DSA, ML, PROJECT") },
+                        placeholder = { Text("DSA, ML, DEV") },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Metric Type", style = MaterialTheme.typography.labelSmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            FilterChip(
-                                selected = metricType == "COUNT",
-                                onClick = {
-                                    metricType = "COUNT"
-                                    if (unit == "hours") unit = "questions"
-                                },
-                                label = { Text("COUNT") }
-                            )
-                            FilterChip(
-                                selected = metricType == "HOURS",
-                                onClick = {
-                                    metricType = "HOURS"
-                                    if (unit == "questions") unit = "hours"
-                                },
-                                label = { Text("HOURS") }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Unit, Start Baseline, Target Value
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
                     OutlinedTextField(
                         value = unit,
                         onValueChange = { unit = it },
                         label = { Text("Unit") },
-                        placeholder = { Text("questions") },
+                        placeholder = { Text("questions, hours") },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 3. Metric Type (full-width, two-option segmented control: COUNT and HOURS)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Metric Type",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = StudentOsTheme.extendedColors.secondaryText,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    Surface(
+                        color = StudentOsTheme.extendedColors.innerSurface,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, StudentOsTheme.extendedColors.innerBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val isCount = metricType == "COUNT"
+                            Surface(
+                                color = if (isCount) StudentOsTheme.extendedColors.primaryCta else Color.Transparent,
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        metricType = "COUNT"
+                                        if (unit == "hours") unit = "questions"
+                                        val sVal = startValueStr.toDoubleOrNull()
+                                        if (sVal != null && sVal % 1.0 == 0.0) startValueStr = sVal.toInt().toString()
+                                        val tVal = targetValueStr.toDoubleOrNull()
+                                        if (tVal != null && tVal % 1.0 == 0.0) targetValueStr = tVal.toInt().toString()
+                                    }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "COUNT",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isCount) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isCount) Color.White else StudentOsTheme.extendedColors.secondaryText,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+
+                            val isHours = metricType == "HOURS"
+                            Surface(
+                                color = if (isHours) StudentOsTheme.extendedColors.primaryCta else Color.Transparent,
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        metricType = "HOURS"
+                                        if (unit == "questions") unit = "hours"
+                                    }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "HOURS",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isHours) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isHours) Color.White else StudentOsTheme.extendedColors.secondaryText,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 4. Baseline and Target (two balanced columns)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     OutlinedTextField(
                         value = startValueStr,
                         onValueChange = { startValueStr = it },
                         label = { Text("Baseline") },
+                        placeholder = { Text(if (metricType == "COUNT") "0" else "0.0") },
                         singleLine = true,
-                        modifier = Modifier.weight(0.9f)
+                        modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = targetValueStr,
                         onValueChange = { targetValueStr = it },
                         label = { Text("Target") },
+                        placeholder = { Text(if (metricType == "COUNT") "100" else "100.0") },
                         singleLine = true,
-                        modifier = Modifier.weight(0.9f)
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Dates row (YYYY-MM-DD)
+                // 5. Start Date and Target Date (two balanced columns with short labels)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OutlinedTextField(
                         value = startDateStr,
                         onValueChange = { startDateStr = it },
-                        label = { Text("Start (YYYY-MM-DD)") },
+                        label = { Text("Start Date") },
+                        trailingIcon = {
+                            IconButton(onClick = { showStartDatePicker = true }) {
+                                Icon(Icons.Default.DateRange, contentDescription = "Pick Start Date")
+                            }
+                        },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = targetDateStr,
                         onValueChange = { targetDateStr = it },
-                        label = { Text("Target (YYYY-MM-DD)") },
+                        label = { Text("Target Date") },
+                        trailingIcon = {
+                            IconButton(onClick = { showTargetDatePicker = true }) {
+                                Icon(Icons.Default.DateRange, contentDescription = "Pick Target Date")
+                            }
+                        },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -931,16 +1149,24 @@ fun GoalFormDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(onClick = onDismiss) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, StudentOsTheme.extendedColors.innerBorder),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = StudentOsTheme.extendedColors.secondaryText
+                        )
+                    ) {
                         Text("Cancel")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Button(
                         onClick = {
                             val startVal = startValueStr.toDoubleOrNull()
@@ -977,9 +1203,14 @@ fun GoalFormDialog(
                                     existingGoal?.isArchived ?: false
                                 )
                             }
-                        }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = StudentOsTheme.extendedColors.primaryCta,
+                            contentColor = Color.White
+                        )
                     ) {
-                        Text(if (isEdit) "Save Changes" else "Create Goal")
+                        Text(if (isEdit) "Save Changes" else "Create Goal", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -987,7 +1218,23 @@ fun GoalFormDialog(
     }
 }
 
-// ── Date Helpers ───────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+private fun formatMetricValue(value: Double, metricType: String): String {
+    return if (metricType == "COUNT") {
+        if (value % 1.0 == 0.0) {
+            value.toInt().toString()
+        } else {
+            "%.1f".format(value)
+        }
+    } else {
+        if (value % 1.0 == 0.0) {
+            value.toInt().toString()
+        } else {
+            "%.1f".format(value)
+        }
+    }
+}
 
 private fun InstantToLocalDate(epochMs: Long): LocalDate {
     return java.time.Instant.ofEpochMilli(epochMs)

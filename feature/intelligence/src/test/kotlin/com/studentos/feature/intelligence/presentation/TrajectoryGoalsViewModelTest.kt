@@ -185,4 +185,30 @@ class TrajectoryGoalsViewModelTest {
         coVerify(exactly = 1) { manageGoalsUseCase.deleteGoal(1L) }
         assertTrue(viewModel.uiState.value.userMessage?.contains("deleted") == true)
     }
+
+    @Test
+    fun `database error in flow is caught gracefully without crashing`() = runTest {
+        val failingGoalDao: GoalDao = mockk()
+        val failingActivityDao: ActivityLogDao = mockk()
+
+        every { failingGoalDao.observeActiveGoals() } returns kotlinx.coroutines.flow.flow {
+            throw IllegalStateException("Room migration validation failed")
+        }
+        every { failingGoalDao.observeArchivedGoals() } returns flowOf(emptyList())
+        every { failingActivityDao.observeAllLogs() } returns flowOf(emptyList())
+
+        val testVm = TrajectoryGoalsViewModel(
+            goalDao = failingGoalDao,
+            activityLogDao = failingActivityDao,
+            calculateGoalProgressUseCase = calculateGoalProgressUseCase,
+            saveGoalUseCase = saveGoalUseCase,
+            manageGoalsUseCase = manageGoalsUseCase
+        )
+
+        advanceUntilIdle()
+
+        // Should not crash and should surface error cleanly
+        assertEquals(false, testVm.uiState.value.isLoading)
+        assertTrue(testVm.uiState.value.errorMessage?.contains("Failed to load goals") == true)
+    }
 }

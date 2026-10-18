@@ -120,7 +120,7 @@ dependencies {
 
     // ── Feature and Core modules ─────────────────────────────────────────────
     implementation(project(":core:database"))
-    // implementation(project(":core:ui"))
+    implementation(project(":core:ui"))
     // implementation(project(":core:events"))
     // implementation(project(":core:intelligence"))
     implementation(project(":core:notifications"))

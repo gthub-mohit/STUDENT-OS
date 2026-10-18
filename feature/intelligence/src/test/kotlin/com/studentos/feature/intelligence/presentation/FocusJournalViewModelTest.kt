@@ -175,4 +175,147 @@ class FocusJournalViewModelTest {
 
         coVerify(exactly = 1) { commitmentDao.updateStatus(101L, "COMPLETED", any()) }
     }
+
+    @Test
+    fun `database error in flow sets single errorMessage and allows retry`() = runTest {
+        val failingActivityLogDao: ActivityLogDao = mockk()
+        val failingCommitmentDao: CommitmentDao = mockk()
+        val failingJournalDao: JournalDao = mockk()
+        val failingGoalDao: GoalDao = mockk()
+
+        every { failingActivityLogDao.observeLogsBetween(any(), any()) } returns kotlinx.coroutines.flow.flow {
+            throw IllegalStateException("Database query failed")
+        }
+        every { failingCommitmentDao.observePendingCommitments() } returns kotlinx.coroutines.flow.flow {
+            throw IllegalStateException("Database query failed")
+        }
+        every { failingJournalDao.observeAllEntries() } returns kotlinx.coroutines.flow.flow {
+            throw IllegalStateException("Database query failed")
+        }
+        every { failingGoalDao.observeActiveGoals() } returns flowOf(emptyList())
+
+        val testVm = FocusJournalViewModel(
+            extractJournalUseCase = extractJournalUseCase,
+            confirmAndPersistActivitiesUseCase = confirmAndPersistActivitiesUseCase,
+            activityLogDao = failingActivityLogDao,
+            commitmentDao = failingCommitmentDao,
+            journalDao = failingJournalDao,
+            goalDao = failingGoalDao
+        )
+
+        advanceUntilIdle()
+
+        // Should present a single, clean contextual error
+        assertNotNull(testVm.uiState.value.errorMessage)
+        org.junit.Assert.assertTrue(testVm.uiState.value.errorMessage!!.contains("Unable to load local"))
+
+        // Clear messages
+        testVm.clearMessages()
+        assertNull(testVm.uiState.value.errorMessage)
+
+        // Retry database load
+        testVm.retryDatabaseLoad()
+        advanceUntilIdle()
+        assertNotNull(testVm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `saving raw note only does not fabricate activity logs or increment accomplishments`() = runTest {
+        val sampleNote = "solved leetcode questions on Array , started machine learning with pandas and numpy"
+        coEvery { journalDao.insert(any()) } returns 42L
+
+        viewModel.onRawInputChanged(sampleNote)
+        viewModel.saveRawNoteOnly()
+        advanceUntilIdle()
+
+        // Verifies raw input is saved as raw note only
+        coVerify(exactly = 1) {
+            journalDao.insert(match {
+                it.rawLog == sampleNote && it.structuredSummary == null
+            })
+        }
+
+        // Verifies NO activity logs are fabricated or persisted without AI extraction and user confirmation
+        coVerify(exactly = 0) {
+            confirmAndPersistActivitiesUseCase(any(), any(), any(), any(), any(), any())
+        }
+
+        // Verifies input is cleared and guidance is given to user
+        assertEquals("", viewModel.uiState.value.rawInput)
+        val userMsg = viewModel.uiState.value.userMessage
+        assertNotNull(userMsg)
+        org.junit.Assert.assertTrue(userMsg!!.contains("Extract with AI"))
+    }
+
+    @Test
+    fun `extractExistingJournalEntry extracts unextracted note and confirms activities reactively`() = runTest {
+        val rawNoteEntry = com.studentos.core.database.entity.JournalEntryEntity(
+            id = 55L,
+            date = "2026-10-18",
+            rawLog = "solved leetcode questions on Array , started machine learning with pandas and numpy",
+            structuredSummary = null,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+
+        val extractedResponse = ExtractionResponse(
+            summary = "Solved Array questions and started ML with pandas/numpy.",
+            activities = listOf(
+                ExtractedActivityDto(
+                    title = "Solved LeetCode Array questions",
+                    activityType = "DSA",
+                    metricDelta = 5.0
+                ),
+                ExtractedActivityDto(
+                    title = "Started ML with pandas and numpy",
+                    activityType = "ML",
+                    metricDelta = 1.0
+                )
+            ),
+            commitments = emptyList()
+        )
+
+        coEvery { extractJournalUseCase(rawNoteEntry.rawLog, any()) } returns ExtractionResult.Success(
+            response = extractedResponse,
+            journalEntryId = 55L
+        )
+
+        coEvery {
+            confirmAndPersistActivitiesUseCase(
+                journalEntryId = 55L,
+                confirmedActivities = any(),
+                confirmedCommitments = any(),
+                summary = any(),
+                rawInput = any(),
+                timestamp = any()
+            )
+        } returns PersistenceResult(persistedActivitiesCount = 2, persistedCommitmentsCount = 0, skippedDuplicatesCount = 0)
+
+        // 1. User taps "Extract with AI" on the raw history item
+        viewModel.extractExistingJournalEntry(rawNoteEntry)
+        advanceUntilIdle()
+
+        // Verify preview is populated with 2 activities and correct journalEntryId
+        assertNotNull(viewModel.uiState.value.preview)
+        val preview = viewModel.uiState.value.preview!!
+        assertEquals(55L, preview.journalEntryId)
+        assertEquals(2, preview.activities.size)
+
+        // 2. User confirms extraction
+        viewModel.confirmPreview()
+        advanceUntilIdle()
+
+        // Verify activities are persisted into ActivityLogEntity via use case
+        coVerify(exactly = 1) {
+            confirmAndPersistActivitiesUseCase(
+                journalEntryId = 55L,
+                confirmedActivities = match { it.size == 2 },
+                confirmedCommitments = any(),
+                summary = any(),
+                rawInput = rawNoteEntry.rawLog,
+                timestamp = any()
+            )
+        }
+        assertNull(viewModel.uiState.value.preview)
+    }
 }
