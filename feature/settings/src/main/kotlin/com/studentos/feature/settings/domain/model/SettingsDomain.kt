@@ -13,7 +13,10 @@ data class SettingsDomain(
     val scoreWeightDsa: Int = 10,
     val ocrConfidenceThreshold: Float = 0.80f,
     val aiEnabled: Boolean = true,
-    val aiProvider: String = "DEEPSEEK",
+    val aiProvider: String = "OMNIROUTE",
+    val omniRouteBaseUrl: String = "http://10.0.2.2:20128/v1/",
+    val omniRouteModel: String = "deepseek-chat",
+    val omniRouteApiKey: String = "",
     val aiIntradayUpdatesEnabled: Boolean = true,
     val aiMaxCallsPerDay: Int = 10,
     val aiCacheMaxAgeHours: Int = 6,
@@ -29,3 +32,4 @@ data class SettingsDomain(
     val notificationFreeSlotEnabled: Boolean = true,
     val notificationInactiveProjectEnabled: Boolean = true
 )
+

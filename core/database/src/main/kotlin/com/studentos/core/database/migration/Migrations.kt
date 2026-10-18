@@ -132,3 +132,108 @@ val MIGRATION_1_4 = object : Migration(1, 4) {
         MIGRATION_3_4.migrate(db)
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // 1. Create goals table
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `goals` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `title` TEXT NOT NULL,
+                `category` TEXT NOT NULL,
+                `metric_type` TEXT NOT NULL,
+                `unit` TEXT NOT NULL,
+                `start_value` REAL NOT NULL,
+                `target_value` REAL NOT NULL,
+                `start_date` INTEGER NOT NULL,
+                `target_date` INTEGER NOT NULL,
+                `is_archived` INTEGER NOT NULL DEFAULT 0,
+                `created_at` INTEGER NOT NULL,
+                `updated_at` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_goals_active` ON `goals` (`is_archived`, `target_date`)")
+
+        // 2. Create commitments table
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `commitments` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `title` TEXT NOT NULL,
+                `category` TEXT NOT NULL,
+                `deadline` INTEGER,
+                `priority` TEXT NOT NULL DEFAULT 'MEDIUM',
+                `status` TEXT NOT NULL DEFAULT 'PENDING',
+                `estimated_minutes` INTEGER,
+                `notes` TEXT,
+                `created_at` INTEGER NOT NULL,
+                `completed_at` INTEGER
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_commitments_deadline` ON `commitments` (`status`, `deadline`)")
+
+        // 3. Create activity_logs table
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `activity_logs` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `goal_id` INTEGER,
+                `commitment_id` INTEGER,
+                `timestamp` INTEGER NOT NULL,
+                `metric_delta` REAL NOT NULL,
+                `activity_type` TEXT NOT NULL,
+                `summary` TEXT NOT NULL,
+                `raw_input` TEXT,
+                `duration_minutes` INTEGER,
+                `dedup_hash` TEXT,
+                `confirmed_at` INTEGER NOT NULL,
+                FOREIGN KEY(`goal_id`) REFERENCES `goals`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL,
+                FOREIGN KEY(`commitment_id`) REFERENCES `commitments`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_activity_goal` ON `activity_logs` (`goal_id`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_activity_commitment` ON `activity_logs` (`commitment_id`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_activity_timestamp` ON `activity_logs` (`timestamp`)")
+
+        // 4. Create journal_entries table
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `journal_entries` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `date` TEXT NOT NULL,
+                `raw_log` TEXT NOT NULL,
+                `structured_summary` TEXT,
+                `created_at` INTEGER NOT NULL,
+                `updated_at` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_journal_date` ON `journal_entries` (`date`)")
+    }
+}
+
+val MIGRATION_3_5 = object : Migration(3, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        MIGRATION_3_4.migrate(db)
+        MIGRATION_4_5.migrate(db)
+    }
+}
+
+val MIGRATION_2_5 = object : Migration(2, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        MIGRATION_2_4.migrate(db)
+        MIGRATION_4_5.migrate(db)
+    }
+}
+
+val MIGRATION_1_5 = object : Migration(1, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        MIGRATION_1_4.migrate(db)
+        MIGRATION_4_5.migrate(db)
+    }
+}
+

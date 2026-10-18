@@ -100,6 +100,9 @@ class CpSyncWorkerTest {
         override suspend fun set(setting: SettingEntity) {
             settingsMap[setting.key] = setting.value
         }
+        override suspend fun delete(key: String) {
+            settingsMap.remove(key)
+        }
     }
 
     private class FakeCodeChefApiService : CodeChefApiService {

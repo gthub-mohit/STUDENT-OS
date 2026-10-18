@@ -32,6 +32,7 @@ class WeeklyViewModelTest {
         override suspend fun getAll(): List<SettingEntity> = emptyList()
         override fun observeAll(): Flow<List<SettingEntity>> = flowOf(emptyList())
         override suspend fun set(setting: SettingEntity) {}
+        override suspend fun delete(key: String) {}
     }
 
     private class FakeTimetableRepository : TimetableRepository {

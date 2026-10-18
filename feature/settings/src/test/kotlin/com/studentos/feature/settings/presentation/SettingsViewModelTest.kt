@@ -3,9 +3,13 @@ package com.studentos.feature.settings.presentation
 import app.cash.turbine.test
 import com.studentos.core.database.dao.CpProfileDao
 import com.studentos.core.database.entity.CpProfileEntity
+import com.studentos.core.intelligence.model.ConnectionTestResult
+import com.studentos.core.intelligence.model.FailureReason
+import com.studentos.core.intelligence.provider.OmniRouteProvider
 import com.studentos.feature.settings.domain.model.SettingsDomain
 import com.studentos.feature.settings.domain.repository.BackupRepository
 import com.studentos.feature.settings.domain.repository.SettingsRepository
+import com.studentos.feature.settings.presentation.state.ConnectionTestState
 import com.studentos.feature.settings.presentation.viewmodel.SettingsViewModel
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -31,6 +35,7 @@ class SettingsViewModelTest {
     private val settingsRepository: SettingsRepository = mockk(relaxed = true)
     private val backupRepository: BackupRepository = mockk(relaxed = true)
     private val cpProfileDao: CpProfileDao = mockk(relaxed = true)
+    private val omniRouteProvider: OmniRouteProvider = mockk(relaxed = true)
     private val settingsFlow = MutableStateFlow(SettingsDomain())
 
     private lateinit var viewModel: SettingsViewModel
@@ -43,6 +48,7 @@ class SettingsViewModelTest {
         viewModel = SettingsViewModel(
             settingsRepository = settingsRepository,
             backupRepository = backupRepository,
+            omniRouteProvider = omniRouteProvider,
             context = null,
             cpProfileDao = cpProfileDao
         )
@@ -62,7 +68,8 @@ class SettingsViewModelTest {
             assertEquals(75, state.settings.attendanceThreshold)
             assertEquals("07:00", state.settings.dailyBriefTimeHHmm)
             assertTrue(state.settings.aiEnabled)
-            assertEquals("DEEPSEEK", state.settings.aiProvider)
+            assertEquals("OMNIROUTE", state.settings.aiProvider)
+            assertEquals(ConnectionTestState.Idle, state.connectionTestState)
         }
     }
 
@@ -81,6 +88,61 @@ class SettingsViewModelTest {
 
         coVerify { settingsRepository.setAiProvider("MOCK") }
     }
+
+    @Test
+    fun updateOmniRouteBaseUrl_callsRepository() = runTest {
+        viewModel.updateOmniRouteBaseUrl("http://127.0.0.1:20128/v1/")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { settingsRepository.setOmniRouteBaseUrl("http://127.0.0.1:20128/v1/") }
+    }
+
+    @Test
+    fun updateOmniRouteModel_callsRepository() = runTest {
+        viewModel.updateOmniRouteModel("gpt-4o")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { settingsRepository.setOmniRouteModel("gpt-4o") }
+    }
+
+    @Test
+    fun updateOmniRouteApiKey_callsRepositoryAndSetsUserMessage() = runTest {
+        viewModel.updateOmniRouteApiKey("omni-key-secret")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { settingsRepository.setOmniRouteApiKey("omni-key-secret") }
+        assertEquals("Gateway credential saved securely", viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun testOmniRouteConnection_success_updatesConnectionTestState() = runTest {
+        coEvery { omniRouteProvider.testConnection(any(), any()) } returns
+            ConnectionTestResult.Success(latencyMs = 45L, message = "Connected (200 OK, 45ms)")
+
+        viewModel.testOmniRouteConnection()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value.connectionTestState
+        assertTrue(state is ConnectionTestState.Success)
+        val success = state as ConnectionTestState.Success
+        assertEquals(45L, success.latencyMs)
+        assertEquals("Connected (200 OK, 45ms)", success.message)
+    }
+
+    @Test
+    fun testOmniRouteConnection_failure_updatesConnectionTestState() = runTest {
+        coEvery { omniRouteProvider.testConnection(any(), any()) } returns
+            ConnectionTestResult.Failure(reason = FailureReason.OFFLINE, message = "Connection refused")
+
+        viewModel.testOmniRouteConnection()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value.connectionTestState
+        assertTrue(state is ConnectionTestState.Failure)
+        val failure = state as ConnectionTestState.Failure
+        assertEquals("Connection refused", failure.message)
+    }
+
 
     @Test
     fun updateDeepSeekApiKey_callsRepositoryAndSetsUserMessage() = runTest {

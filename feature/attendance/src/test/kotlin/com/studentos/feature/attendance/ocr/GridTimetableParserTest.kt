@@ -524,4 +524,112 @@ class GridTimetableParserTest {
         assertEquals("10:00", slots[0].startTime)
         assertEquals("10:55", slots[0].endTime)
     }
+
+    @Test
+    fun parseGrid_dotNotationTimeHeaders_extractsSlots() {
+        val elements = listOf(
+            OcrTextElement("9.00 - 9.55", OcrRect(100, 30, 200, 60)),
+            OcrTextElement("10.00 - 10.55", OcrRect(200, 30, 300, 60)),
+            OcrTextElement("Mon", OcrRect(10, 100, 80, 150)),
+            OcrTextElement("CS101\nRoom 1", OcrRect(105, 105, 195, 145)),
+            OcrTextElement("CS102\nRoom 2", OcrRect(205, 105, 295, 145))
+        )
+
+        assertTrue(parser.canParseAsGrid(elements))
+        val slots = parser.parseGrid(elements)
+        assertEquals(2, slots.size)
+        assertEquals("09:00", slots[0].startTime)
+        assertEquals("09:55", slots[0].endTime)
+        assertEquals("CS101", slots[0].subjectName)
+
+        assertEquals("10:00", slots[1].startTime)
+        assertEquals("10:55", slots[1].endTime)
+        assertEquals("CS102", slots[1].subjectName)
+    }
+
+    @Test
+    fun parseGrid_prefixedPeriodHeaders_extractsSlots() {
+        val elements = listOf(
+            OcrTextElement("Period 1", OcrRect(100, 30, 200, 60)),
+            OcrTextElement("Period 2", OcrRect(200, 30, 300, 60)),
+            OcrTextElement("Tue", OcrRect(10, 100, 80, 150)),
+            OcrTextElement("MATH201\nRoom 3", OcrRect(105, 105, 195, 145))
+        )
+
+        assertTrue(parser.canParseAsGrid(elements))
+        val slots = parser.parseGrid(elements)
+        assertEquals(1, slots.size)
+        assertEquals("08:00", slots[0].startTime)
+        assertEquals("08:55", slots[0].endTime)
+        assertEquals("MATH201", slots[0].subjectName)
+    }
+
+    @Test
+    fun parseGrid_allCapsCourseNames_accepted() {
+        val elements = listOf(
+            OcrTextElement("9:00 - 10:00", OcrRect(100, 30, 200, 60)),
+            OcrTextElement("10:00 - 11:00", OcrRect(200, 30, 300, 60)),
+            OcrTextElement("Wed", OcrRect(10, 100, 80, 150)),
+            OcrTextElement("OPERATING SYSTEMS\nRoom 101", OcrRect(105, 105, 195, 145)),
+            OcrTextElement("DATA STRUCTURES\nLab 2", OcrRect(205, 105, 295, 145))
+        )
+
+        val slots = parser.parseGrid(elements)
+        assertEquals(2, slots.size)
+        assertEquals("OPERATING SYSTEMS", slots[0].subjectName)
+        assertEquals("Room 101", slots[0].location)
+        assertEquals("DATA STRUCTURES", slots[1].subjectName)
+        assertEquals("Lab 2", slots[1].location)
+    }
+
+    @Test
+    fun parseGrid_variableColumnWidthsAndSpacing_extractsCorrectSlots() {
+        // Col 1 width = 70 (100..170), Col 2 width = 130 (170..300), Col 3 width = 100 (300..400)
+        val elements = listOf(
+            OcrTextElement("9:00 - 10:00", OcrRect(105, 30, 165, 60)),
+            OcrTextElement("10:00 - 11:00", OcrRect(180, 30, 290, 60)),
+            OcrTextElement("11:00 - 12:00", OcrRect(310, 30, 390, 60)),
+            OcrTextElement("Thu", OcrRect(10, 100, 80, 150)),
+            // Cell in narrow Col 1
+            OcrTextElement("CS101", OcrRect(110, 105, 160, 145)),
+            // Cell in wide Col 2
+            OcrTextElement("CS102", OcrRect(185, 105, 285, 145)),
+            // Cell in Col 3
+            OcrTextElement("CS103", OcrRect(315, 105, 385, 145))
+        )
+
+        val slots = parser.parseGrid(elements)
+        assertEquals(3, slots.size)
+        assertEquals("CS101", slots[0].subjectName)
+        assertEquals("09:00", slots[0].startTime)
+        assertEquals("10:00", slots[0].endTime)
+
+        assertEquals("CS102", slots[1].subjectName)
+        assertEquals("10:00", slots[1].startTime)
+        assertEquals("11:00", slots[1].endTime)
+
+        assertEquals("CS103", slots[2].subjectName)
+        assertEquals("11:00", slots[2].startTime)
+        assertEquals("12:00", slots[2].endTime)
+    }
+
+    @Test
+    fun parseGrid_noisyDayHeaders_extractsSlots() {
+        val elements = listOf(
+            OcrTextElement("9:00 - 10:00", OcrRect(100, 30, 200, 60)),
+            // Day headers with punctuation / numbering
+            OcrTextElement("1. Mon.", OcrRect(10, 100, 80, 150)),
+            OcrTextElement("DAY: Fri", OcrRect(10, 200, 80, 250)),
+            OcrTextElement("CS101", OcrRect(105, 105, 195, 145)),
+            OcrTextElement("CS102", OcrRect(105, 205, 195, 245))
+        )
+
+        assertTrue(parser.canParseAsGrid(elements))
+        val slots = parser.parseGrid(elements)
+        assertEquals(2, slots.size)
+        assertEquals(1, slots[0].dayOfWeek)
+        assertEquals("CS101", slots[0].subjectName)
+        assertEquals(5, slots[1].dayOfWeek)
+        assertEquals("CS102", slots[1].subjectName)
+    }
 }

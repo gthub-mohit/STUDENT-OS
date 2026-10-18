@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -185,5 +187,52 @@ class OcrViewModelTest {
 
         val state = viewModel.uiState.first { it is OcrUiState.ImportSuccess }
         assertEquals(OcrUiState.ImportSuccess, state)
+    }
+
+    @Test
+    fun confirmImport_withIncompleteSlot_blocksImportAndSetsError() = runBlocking {
+        val mapper = createMapper()
+        val processor = OcrProcessor(mapper)
+        val repo = FakeTimetableRepository()
+        val useCase = ImportTimetableUseCase(repo)
+        val viewModel = OcrViewModel(processor, useCase)
+
+        val field = OcrViewModel::class.java.getDeclaredField("_uiState")
+        field.isAccessible = true
+        // Slot with blank subject
+        (field.get(viewModel) as kotlinx.coroutines.flow.MutableStateFlow<OcrUiState>).value = OcrUiState.Content(
+            slots = listOf(
+                ParsedTimetableSlot(dayOfWeek = 1, startTime = "09:00", endTime = "10:00", subjectName = "")
+            ),
+            hasWarnings = false
+        )
+
+        viewModel.confirmImport(replaceExisting = false)
+
+        val state = viewModel.uiState.value as OcrUiState.Content
+        assertNotNull(state.errorMessage)
+        assertNull(repo.importedSlots)
+    }
+
+    @Test
+    fun confirmImport_withEmptySlots_blocksImportAndSetsError() = runBlocking {
+        val mapper = createMapper()
+        val processor = OcrProcessor(mapper)
+        val repo = FakeTimetableRepository()
+        val useCase = ImportTimetableUseCase(repo)
+        val viewModel = OcrViewModel(processor, useCase)
+
+        val field = OcrViewModel::class.java.getDeclaredField("_uiState")
+        field.isAccessible = true
+        (field.get(viewModel) as kotlinx.coroutines.flow.MutableStateFlow<OcrUiState>).value = OcrUiState.Content(
+            slots = emptyList(),
+            hasWarnings = false
+        )
+
+        viewModel.confirmImport(replaceExisting = false)
+
+        val state = viewModel.uiState.value as OcrUiState.Content
+        assertNotNull(state.errorMessage)
+        assertNull(repo.importedSlots)
     }
 }

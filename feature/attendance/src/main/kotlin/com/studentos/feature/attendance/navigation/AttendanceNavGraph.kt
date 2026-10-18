@@ -28,7 +28,8 @@ fun NavGraphBuilder.attendanceNavGraph(navController: NavHostController) {
             onNavigateToCalendar = { navController.navigate("calendar") },
             onNavigateToAnalytics = { navController.navigate("analytics") },
             onNavigateToEditTimetable = { navController.navigate("edit-timetable") },
-            onNavigateToOcrPreview = { navController.navigate("ocr-preview") }
+            onNavigateToOcrPreview = { navController.navigate("ocr-preview") },
+            onNavigateToManageSubjects = { navController.navigate("manage-subjects") }
         )
     }
 
@@ -52,7 +53,8 @@ fun NavGraphBuilder.attendanceNavGraph(navController: NavHostController) {
         val viewModel: EditTimetableViewModel = hiltViewModel()
         EditTimetableScreen(
             viewModel = viewModel,
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
+            onNavigateToManageSubjects = { navController.navigate("manage-subjects") }
         )
     }
 

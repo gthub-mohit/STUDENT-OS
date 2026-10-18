@@ -7,8 +7,10 @@ import com.studentos.core.database.dao.CpProfileDao
 import com.studentos.core.database.entity.CpProfileEntity
 import com.studentos.core.notifications.scheduler.NotificationRescheduler
 import com.studentos.core.sync.worker.CpSyncWorker
+import com.studentos.core.intelligence.provider.OmniRouteProvider
 import com.studentos.feature.settings.domain.repository.BackupRepository
 import com.studentos.feature.settings.domain.repository.SettingsRepository
+import com.studentos.feature.settings.presentation.state.ConnectionTestState
 import com.studentos.feature.settings.presentation.state.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +27,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val backupRepository: BackupRepository,
+    private val omniRouteProvider: OmniRouteProvider,
     @ApplicationContext private val context: Context? = null,
     private val cpProfileDao: CpProfileDao? = null,
     private val notificationRescheduler: NotificationRescheduler? = null
@@ -34,6 +37,7 @@ class SettingsViewModel @Inject constructor(
 
     private data class Flags(
         val isApiKeyVisible: Boolean = false,
+        val connectionTestState: ConnectionTestState = ConnectionTestState.Idle,
         val userMessage: String? = null,
         val showResetConfirmDialog: Boolean = false,
         val showImportConfirmDialog: Boolean = false,
@@ -49,6 +53,7 @@ class SettingsViewModel @Inject constructor(
             isLoading = false,
             settings = settings,
             isApiKeyVisible = flags.isApiKeyVisible,
+            connectionTestState = flags.connectionTestState,
             userMessage = flags.userMessage,
             showResetConfirmDialog = flags.showResetConfirmDialog,
             showImportConfirmDialog = flags.showImportConfirmDialog,
@@ -60,6 +65,7 @@ class SettingsViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = SettingsUiState(isLoading = true)
     )
+
 
     fun toggleApiKeyVisibility() {
         _uiFlags.update { it.copy(isApiKeyVisible = !it.isApiKeyVisible) }
@@ -92,8 +98,61 @@ class SettingsViewModel @Inject constructor(
     fun updateAiProvider(provider: String) {
         viewModelScope.launch {
             settingsRepository.setAiProvider(provider)
+            _uiFlags.update { it.copy(connectionTestState = ConnectionTestState.Idle) }
         }
     }
+
+    fun updateOmniRouteBaseUrl(baseUrl: String) {
+        viewModelScope.launch {
+            settingsRepository.setOmniRouteBaseUrl(baseUrl.trim())
+            _uiFlags.update { it.copy(connectionTestState = ConnectionTestState.Idle) }
+        }
+    }
+
+    fun updateOmniRouteModel(model: String) {
+        viewModelScope.launch {
+            settingsRepository.setOmniRouteModel(model.trim())
+            _uiFlags.update { it.copy(connectionTestState = ConnectionTestState.Idle) }
+        }
+    }
+
+    fun updateOmniRouteApiKey(apiKey: String) {
+        viewModelScope.launch {
+            settingsRepository.setOmniRouteApiKey(apiKey.trim())
+            _uiFlags.update {
+                it.copy(
+                    connectionTestState = ConnectionTestState.Idle,
+                    userMessage = "Gateway credential saved securely"
+                )
+            }
+        }
+    }
+
+    fun testOmniRouteConnection() {
+        viewModelScope.launch {
+            _uiFlags.update { it.copy(connectionTestState = ConnectionTestState.Testing) }
+            val result = omniRouteProvider.testConnection()
+            val testState = when (result) {
+                is com.studentos.core.intelligence.model.ConnectionTestResult.Success -> {
+                    ConnectionTestState.Success(
+                        latencyMs = result.latencyMs,
+                        message = result.message
+                    )
+                }
+                is com.studentos.core.intelligence.model.ConnectionTestResult.Failure -> {
+                    ConnectionTestState.Failure(
+                        message = result.message
+                    )
+                }
+            }
+            _uiFlags.update { it.copy(connectionTestState = testState) }
+        }
+    }
+
+    fun clearConnectionTestState() {
+        _uiFlags.update { it.copy(connectionTestState = ConnectionTestState.Idle) }
+    }
+
 
     fun updateDeepSeekApiKey(apiKey: String) {
         viewModelScope.launch {

@@ -1,22 +1,29 @@
 package com.studentos.feature.settings.presentation.screen
 
 import android.content.Intent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -53,6 +61,7 @@ import com.studentos.feature.settings.presentation.component.SettingSliderRow
 import com.studentos.feature.settings.presentation.component.SettingSwitchRow
 import com.studentos.feature.settings.presentation.component.SettingTimePickerDialog
 import com.studentos.feature.settings.presentation.component.SettingsSection
+import com.studentos.feature.settings.presentation.state.ConnectionTestState
 import com.studentos.feature.settings.presentation.state.SettingsUiState
 import com.studentos.feature.settings.presentation.viewmodel.SettingsViewModel
 
@@ -82,6 +91,10 @@ fun SettingsRoute(
         onOcrConfidenceChange = viewModel::updateOcrConfidenceThreshold,
         onAiEnabledChange = viewModel::updateAiEnabled,
         onAiProviderChange = viewModel::updateAiProvider,
+        onOmniRouteBaseUrlChange = viewModel::updateOmniRouteBaseUrl,
+        onOmniRouteModelChange = viewModel::updateOmniRouteModel,
+        onOmniRouteApiKeyChange = viewModel::updateOmniRouteApiKey,
+        onTestOmniRouteConnection = viewModel::testOmniRouteConnection,
         onDeepSeekApiKeyChange = viewModel::updateDeepSeekApiKey,
         onAiIntradayUpdatesChange = viewModel::updateAiIntradayUpdates,
         onAiTonePreferenceChange = viewModel::updateAiTonePreference,
@@ -136,7 +149,12 @@ fun SettingsScreen(
     onOcrConfidenceChange: (Float) -> Unit,
     onAiEnabledChange: (Boolean) -> Unit,
     onAiProviderChange: (String) -> Unit,
+    onOmniRouteBaseUrlChange: (String) -> Unit,
+    onOmniRouteModelChange: (String) -> Unit,
+    onOmniRouteApiKeyChange: (String) -> Unit,
+    onTestOmniRouteConnection: () -> Unit,
     onDeepSeekApiKeyChange: (String) -> Unit,
+
     onAiIntradayUpdatesChange: (Boolean) -> Unit,
     onAiTonePreferenceChange: (String) -> Unit,
     onAiMaxCallsChange: (Int) -> Unit,
@@ -245,11 +263,11 @@ fun SettingsScreen(
                 SettingsSection(
                     title = "Intelligence & AI",
                     icon = Icons.Default.Info,
-                    subtitle = "DeepSeek LLM guidance and parameters"
+                    subtitle = "OmniRoute gateway and execution guidance"
                 ) {
                     SettingSwitchRow(
                         title = "Enable AI Engine",
-                        subtitle = "Uses DeepSeek LLM for personalized daily narrative",
+                        subtitle = "Assists with daily execution planning and reflection",
                         checked = s.aiEnabled,
                         onCheckedChange = onAiEnabledChange
                     )
@@ -257,53 +275,186 @@ fun SettingsScreen(
                     if (s.aiEnabled) {
                         SettingChoiceRow(
                             title = "AI Provider",
-                            options = listOf("DEEPSEEK", "MOCK"),
+                            options = listOf("OMNIROUTE", "DEEPSEEK", "MOCK"),
                             selectedOption = s.aiProvider,
                             onOptionSelected = onAiProviderChange,
-                            optionLabel = { if (it == "DEEPSEEK") "DeepSeek Cloud" else "Offline Mock" }
+                            optionLabel = {
+                                when (it) {
+                                    "OMNIROUTE" -> "OmniRoute Gateway"
+                                    "DEEPSEEK" -> "DeepSeek Cloud"
+                                    else -> "Offline Mock"
+                                }
+                            }
                         )
 
-                        val maskedKey = if (s.deepSeekApiKey.isNotBlank()) {
-                            "••••••••" + s.deepSeekApiKey.takeLast(4)
-                        } else {
-                            "Not configured (click to set)"
+                        if (s.aiProvider == "OMNIROUTE") {
+                            SettingActionRow(
+                                title = "Gateway Base URL",
+                                valueText = s.omniRouteBaseUrl,
+                                subtitle = "OpenAI-compatible HTTP/HTTPS endpoint",
+                                onClick = { editDialogKey = "omniroute_base_url" }
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                AssistChip(
+                                    onClick = { onOmniRouteBaseUrlChange("http://10.0.2.2:20128/v1/") },
+                                    label = { Text("Emulator (10.0.2.2)") }
+                                )
+                                AssistChip(
+                                    onClick = { onOmniRouteBaseUrlChange("http://127.0.0.1:20128/v1/") },
+                                    label = { Text("ADB Reverse (127.0.0.1)") }
+                                )
+                            }
+
+                            SettingActionRow(
+                                title = "Model Identifier",
+                                valueText = s.omniRouteModel,
+                                subtitle = "Target model routed by OmniRoute",
+                                onClick = { editDialogKey = "omniroute_model" }
+                            )
+
+                            val maskedToken = if (s.omniRouteApiKey.isNotBlank()) {
+                                "••••••••" + s.omniRouteApiKey.takeLast(4)
+                            } else {
+                                "None / Unauthenticated (click to set)"
+                            }
+                            SettingActionRow(
+                                title = "Gateway Auth Token",
+                                valueText = maskedToken,
+                                subtitle = "Optional for local gateways. Stored securely in Keystore.",
+                                onClick = { editDialogKey = "omniroute_api_key" }
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val isTesting = uiState.connectionTestState is ConnectionTestState.Testing
+                            OutlinedButton(
+                                onClick = onTestOmniRouteConnection,
+                                enabled = !isTesting,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (isTesting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .padding(end = 8.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Text("Testing Gateway Connection...")
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                    Text("Test Gateway Connection")
+                                }
+                            }
+
+                            when (val testState = uiState.connectionTestState) {
+                                is ConnectionTestState.Success -> {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Surface(
+                                        shape = MaterialTheme.shapes.small,
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Success",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = testState.message,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                    }
+                                }
+                                is ConnectionTestState.Failure -> {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Surface(
+                                        shape = MaterialTheme.shapes.small,
+                                        color = MaterialTheme.colorScheme.errorContainer,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Warning,
+                                                contentDescription = "Error",
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = testState.message,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                    }
+                                }
+                                else -> {}
+                            }
+                        } else if (s.aiProvider == "DEEPSEEK") {
+                            val maskedKey = if (s.deepSeekApiKey.isNotBlank()) {
+                                "••••••••" + s.deepSeekApiKey.takeLast(4)
+                            } else {
+                                "Not configured (click to set)"
+                            }
+                            SettingActionRow(
+                                title = "DeepSeek API Key",
+                                valueText = maskedKey,
+                                subtitle = "Stored securely on device",
+                                onClick = { editDialogKey = "api_key" }
+                            )
+
+                            SettingSwitchRow(
+                                title = "Intra-day Event Updates",
+                                subtitle = "Automatically refresh guidance when tasks or attendance change",
+                                checked = s.aiIntradayUpdatesEnabled,
+                                onCheckedChange = onAiIntradayUpdatesChange
+                            )
+
+                            SettingChoiceRow(
+                                title = "Guidance Tone Preference",
+                                options = listOf("motivational", "concise", "neutral"),
+                                selectedOption = s.aiTonePreference,
+                                onOptionSelected = onAiTonePreferenceChange,
+                                optionLabel = { it.replaceFirstChar { c -> c.uppercase() } }
+                            )
+
+                            SettingActionRow(
+                                title = "Daily Maximum AI Calls",
+                                valueText = "${s.aiMaxCallsPerDay} calls",
+                                subtitle = "Prevents unexpected API quota usage",
+                                onClick = { editDialogKey = "max_calls" }
+                            )
+
+                            SettingActionRow(
+                                title = "Cache Max Age",
+                                valueText = "${s.aiCacheMaxAgeHours} hours",
+                                subtitle = "Reuses guidance cache when student state is identical",
+                                onClick = { editDialogKey = "cache_age" }
+                            )
                         }
-                        SettingActionRow(
-                            title = "DeepSeek API Key",
-                            valueText = maskedKey,
-                            subtitle = "Stored securely on device",
-                            onClick = { editDialogKey = "api_key" }
-                        )
-
-                        SettingSwitchRow(
-                            title = "Intra-day Event Updates",
-                            subtitle = "Automatically refresh guidance when tasks or attendance change",
-                            checked = s.aiIntradayUpdatesEnabled,
-                            onCheckedChange = onAiIntradayUpdatesChange
-                        )
-
-                        SettingChoiceRow(
-                            title = "Guidance Tone Preference",
-                            options = listOf("motivational", "concise", "neutral"),
-                            selectedOption = s.aiTonePreference,
-                            onOptionSelected = onAiTonePreferenceChange,
-                            optionLabel = { it.replaceFirstChar { c -> c.uppercase() } }
-                        )
-
-                        SettingActionRow(
-                            title = "Daily Maximum AI Calls",
-                            valueText = "${s.aiMaxCallsPerDay} calls",
-                            subtitle = "Prevents unexpected API quota usage",
-                            onClick = { editDialogKey = "max_calls" }
-                        )
-
-                        SettingActionRow(
-                            title = "Cache Max Age",
-                            valueText = "${s.aiCacheMaxAgeHours} hours",
-                            subtitle = "Reuses guidance cache when student state is identical",
-                            onClick = { editDialogKey = "cache_age" }
-                        )
                     }
+
 
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedButton(
@@ -502,6 +653,39 @@ fun SettingsScreen(
 
     // ── Edit Dialogs ────────────────────────────────────────────────────────
     when (editDialogKey) {
+        "omniroute_base_url" -> SettingEditDialog(
+            title = "OmniRoute Base URL",
+            subtitle = "Enter gateway endpoint (e.g. http://10.0.2.2:20128/v1/ or http://127.0.0.1:20128/v1/)",
+            initialValue = uiState.settings.omniRouteBaseUrl,
+            placeholder = "http://10.0.2.2:20128/v1/",
+            onDismiss = { editDialogKey = null },
+            onConfirm = {
+                onOmniRouteBaseUrlChange(it)
+                editDialogKey = null
+            }
+        )
+        "omniroute_model" -> SettingEditDialog(
+            title = "Model Identifier",
+            subtitle = "Enter model name routed by gateway (e.g. deepseek-chat, gpt-4o, llama3)",
+            initialValue = uiState.settings.omniRouteModel,
+            placeholder = "deepseek-chat",
+            onDismiss = { editDialogKey = null },
+            onConfirm = {
+                onOmniRouteModelChange(it)
+                editDialogKey = null
+            }
+        )
+        "omniroute_api_key" -> SettingEditDialog(
+            title = "Gateway Auth Token",
+            subtitle = "Enter Bearer token if required by gateway (leave empty if unauthenticated)",
+            initialValue = uiState.settings.omniRouteApiKey,
+            placeholder = "Optional Bearer token...",
+            onDismiss = { editDialogKey = null },
+            onConfirm = {
+                onOmniRouteApiKeyChange(it)
+                editDialogKey = null
+            }
+        )
         "api_key" -> SettingEditDialog(
             title = "DeepSeek API Key",
             subtitle = "Enter your DeepSeek API key for AI-driven daily intelligence",
@@ -513,6 +697,7 @@ fun SettingsScreen(
                 editDialogKey = null
             }
         )
+
         "handle_codechef" -> SettingEditDialog(
             title = "CodeChef Handle",
             initialValue = uiState.settings.codeChefHandle,

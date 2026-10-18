@@ -127,4 +127,107 @@ class TimetableFieldMapperTest {
         // 13:00 should not be accepted as a subject
         assertTrue(invalidSlots.slots.isEmpty())
     }
+
+    @Test
+    fun mapFromRawText_dotFormats_parsesCorrectly() {
+        val rawText = """
+            Monday
+            9.30 - 10.30 Physics - Room 202
+            10.30 - 11.30 Chemistry
+        """.trimIndent()
+
+        val result = mapper.mapFromRawText(rawText)
+        assertEquals(2, result.slots.size)
+
+        assertEquals("09:30", result.slots[0].startTime)
+        assertEquals("10:30", result.slots[0].endTime)
+        assertEquals("Physics", result.slots[0].subjectName)
+        assertEquals("Room 202", result.slots[0].location)
+
+        assertEquals("10:30", result.slots[1].startTime)
+        assertEquals("11:30", result.slots[1].endTime)
+        assertEquals("Chemistry", result.slots[1].subjectName)
+    }
+
+    @Test
+    fun mapFromRawText_diverseAmPmRanges_parsesCorrectly() {
+        val rawText = """
+            Tuesday
+            9-10 AM Mathematics
+            1 - 2 PM Algorithms - Lab 3
+            11 AM - 1 PM Operating Systems
+        """.trimIndent()
+
+        val result = mapper.mapFromRawText(rawText)
+        assertEquals(3, result.slots.size)
+
+        // 9-10 AM
+        assertEquals("09:00", result.slots[0].startTime)
+        assertEquals("10:00", result.slots[0].endTime)
+        assertEquals("Mathematics", result.slots[0].subjectName)
+
+        // 1 - 2 PM
+        assertEquals("13:00", result.slots[1].startTime)
+        assertEquals("14:00", result.slots[1].endTime)
+        assertEquals("Algorithms", result.slots[1].subjectName)
+        assertEquals("Lab 3", result.slots[1].location)
+
+        // 11 AM - 1 PM (cross-noon)
+        assertEquals("11:00", result.slots[2].startTime)
+        assertEquals("13:00", result.slots[2].endTime)
+        assertEquals("Operating Systems", result.slots[2].subjectName)
+    }
+
+    @Test
+    fun mapFromRawText_periodFormatWithExplicitTime_preservesExplicitTimes() {
+        val rawText = """
+            Wednesday
+            Period 1 (9.30 - 10.30): Mathematics - Room 101
+            P2: 10:30 - 11:30 Physics
+        """.trimIndent()
+
+        val result = mapper.mapFromRawText(rawText)
+        assertEquals(2, result.slots.size)
+
+        assertEquals("09:30", result.slots[0].startTime)
+        assertEquals("10:30", result.slots[0].endTime)
+        assertEquals("Mathematics", result.slots[0].subjectName)
+        assertEquals("Room 101", result.slots[0].location)
+
+        assertEquals("10:30", result.slots[1].startTime)
+        assertEquals("11:30", result.slots[1].endTime)
+        assertEquals("Physics", result.slots[1].subjectName)
+    }
+
+    @Test
+    fun mapFromRawText_periodFormatWithoutExplicitTime_flagsLowConfidenceForReview() {
+        val rawText = """
+            Thursday
+            Period 1: Discrete Mathematics - Room 301
+        """.trimIndent()
+
+        val result = mapper.mapFromRawText(rawText)
+        assertEquals(1, result.slots.size)
+
+        assertEquals("08:00", result.slots[0].startTime)
+        assertEquals("08:55", result.slots[0].endTime)
+        assertEquals("Discrete Mathematics", result.slots[0].subjectName)
+        assertEquals("Room 301", result.slots[0].location)
+        // Must be flagged as low confidence so it's not silently saved
+        assertTrue(result.slots[0].isLowConfidence)
+        assertTrue(result.hasWarnings)
+    }
+
+    @Test
+    fun mapFromRawText_noisyDayHeader_detectsDay() {
+        val rawText = """
+            1. Mon.
+            09:00 - 10:00 Networks
+        """.trimIndent()
+
+        val result = mapper.mapFromRawText(rawText)
+        assertEquals(1, result.slots.size)
+        assertEquals(1, result.slots[0].dayOfWeek)
+        assertEquals("Networks", result.slots[0].subjectName)
+    }
 }

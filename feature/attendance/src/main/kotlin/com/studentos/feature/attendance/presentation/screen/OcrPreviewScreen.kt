@@ -281,6 +281,22 @@ private fun OcrContent(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        if (state.errorMessage != null) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                Text(
+                    text = state.errorMessage,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
         if (state.hasWarnings) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = AmberHighlight),
@@ -289,7 +305,7 @@ private fun OcrContent(
                     .padding(bottom = 12.dp)
             ) {
                 Text(
-                    text = "Some fields have low OCR confidence (<80%) and are highlighted in amber. Please verify.",
+                    text = "Some fields have low OCR confidence (<80%) or period-derived times and are highlighted in amber. Please verify.",
                     color = AmberText,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(12.dp)
@@ -347,10 +363,15 @@ private fun SlotRowItem(
     onSlotChange: (ParsedTimetableSlot) -> Unit,
     onDelete: () -> Unit
 ) {
-    val isCriticalLow = slot.confidence < 0.70f
-    val isModerateLow = slot.confidence in 0.70f..<0.80f
+    val isSubjectBlank = slot.subjectName.trim().isBlank()
+    val isTimeInvalid = !isValidSlotTime(slot.startTime, slot.endTime)
+    val isIncomplete = isSubjectBlank || isTimeInvalid
+
+    val isCriticalLow = !isIncomplete && slot.confidence < 0.70f
+    val isModerateLow = !isIncomplete && slot.confidence in 0.70f..<0.80f
 
     val cardBorder = when {
+        isIncomplete -> androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.error)
         isCriticalLow -> androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFC107))
         isModerateLow -> androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFE082))
         else -> null
@@ -372,7 +393,20 @@ private fun SlotRowItem(
                         text = getDayName(slot.dayOfWeek),
                         style = MaterialTheme.typography.titleMedium
                     )
-                    if (isCriticalLow) {
+                    if (isIncomplete) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Text(
+                                text = "Incomplete",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    } else if (isCriticalLow) {
                         Spacer(modifier = Modifier.width(8.dp))
                         androidx.compose.material3.Surface(
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
@@ -411,6 +445,10 @@ private fun SlotRowItem(
                 value = slot.subjectName,
                 onValueChange = { onSlotChange(slot.copy(subjectName = it)) },
                 label = { Text("Subject") },
+                isError = isSubjectBlank,
+                supportingText = if (isSubjectBlank) {
+                    { Text("Subject cannot be empty", color = MaterialTheme.colorScheme.error) }
+                } else null,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -421,6 +459,7 @@ private fun SlotRowItem(
                     value = slot.startTime,
                     onValueChange = { onSlotChange(slot.copy(startTime = it)) },
                     label = { Text("Start Time") },
+                    isError = isTimeInvalid,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -428,7 +467,16 @@ private fun SlotRowItem(
                     value = slot.endTime,
                     onValueChange = { onSlotChange(slot.copy(endTime = it)) },
                     label = { Text("End Time") },
+                    isError = isTimeInvalid,
                     modifier = Modifier.weight(1f)
+                )
+            }
+            if (isTimeInvalid) {
+                Text(
+                    text = "Times must be in HH:mm format and start time must be before end time",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
                 )
             }
 
@@ -442,6 +490,21 @@ private fun SlotRowItem(
             )
         }
     }
+}
+
+private fun isValidSlotTime(start: String, end: String): Boolean {
+    val startMin = parseSlotMinutes(start) ?: return false
+    val endMin = parseSlotMinutes(end) ?: return false
+    return startMin < endMin
+}
+
+private fun parseSlotMinutes(timeStr: String): Int? {
+    val parts = timeStr.trim().split(":")
+    if (parts.size != 2) return null
+    val h = parts[0].toIntOrNull() ?: return null
+    val m = parts[1].toIntOrNull() ?: return null
+    if (h !in 0..23 || m !in 0..59) return null
+    return h * 60 + m
 }
 
 private fun getDayName(dayOfWeek: Int): String {

@@ -2,16 +2,20 @@ package com.studentos.core.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.studentos.core.database.dao.ActivityLogDao
 import com.studentos.core.database.dao.AiCallLogDao
 import com.studentos.core.database.dao.AssignmentDao
 import com.studentos.core.database.dao.BugDao
 import com.studentos.core.database.dao.ClassEventDao
+import com.studentos.core.database.dao.CommitmentDao
 import com.studentos.core.database.dao.CpContestDao
 import com.studentos.core.database.dao.CpProfileDao
 import com.studentos.core.database.dao.CpReflectionDao
 import com.studentos.core.database.dao.DailyBriefDao
 import com.studentos.core.database.dao.DsaCategoryDao
 import com.studentos.core.database.dao.DsaTopicDao
+import com.studentos.core.database.dao.GoalDao
+import com.studentos.core.database.dao.JournalDao
 import com.studentos.core.database.dao.MilestoneDao
 import com.studentos.core.database.dao.ProjectDao
 import com.studentos.core.database.dao.ProjectResourceDao
@@ -20,16 +24,20 @@ import com.studentos.core.database.dao.RecommendationCacheDao
 import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.dao.SubjectDao
 import com.studentos.core.database.dao.TimetableSlotDao
+import com.studentos.core.database.entity.ActivityLogEntity
 import com.studentos.core.database.entity.AiCallLogEntity
 import com.studentos.core.database.entity.AssignmentEntity
 import com.studentos.core.database.entity.BugEntity
 import com.studentos.core.database.entity.ClassEventEntity
+import com.studentos.core.database.entity.CommitmentEntity
 import com.studentos.core.database.entity.CpContestEntity
 import com.studentos.core.database.entity.CpProfileEntity
 import com.studentos.core.database.entity.CpReflectionEntity
 import com.studentos.core.database.entity.DailyBriefEntity
 import com.studentos.core.database.entity.DsaCategoryEntity
 import com.studentos.core.database.entity.DsaTopicEntity
+import com.studentos.core.database.entity.GoalEntity
+import com.studentos.core.database.entity.JournalEntryEntity
 import com.studentos.core.database.entity.MilestoneEntity
 import com.studentos.core.database.entity.ProjectEntity
 import com.studentos.core.database.entity.ProjectResourceEntity
@@ -42,7 +50,7 @@ import com.studentos.core.database.entity.TimetableSlotEntity
 /**
  * AppDatabase — Main Room database class for Student OS.
  *
- * Configured with version = 2 and exportSchema = true.
+ * Configured with version = 5 and exportSchema = true.
  */
 @Database(
     entities = [
@@ -63,9 +71,13 @@ import com.studentos.core.database.entity.TimetableSlotEntity
         ProjectResourceEntity::class,
         DailyBriefEntity::class,
         RecommendationCacheEntity::class,
-        AiCallLogEntity::class
+        AiCallLogEntity::class,
+        GoalEntity::class,
+        CommitmentEntity::class,
+        ActivityLogEntity::class,
+        JournalEntryEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -88,6 +100,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun dailyBriefDao(): DailyBriefDao
     abstract fun recommendationCacheDao(): RecommendationCacheDao
     abstract fun aiCallLogDao(): AiCallLogDao
+    abstract fun goalDao(): GoalDao
+    abstract fun commitmentDao(): CommitmentDao
+    abstract fun activityLogDao(): ActivityLogDao
+    abstract fun journalDao(): JournalDao
 
     companion object {
         const val DATABASE_NAME = "student_os.db"

@@ -12,6 +12,7 @@ data class DeepSeekRequest(
 
 @Serializable
 data class DeepSeekMessage(
-    @SerialName("role") val role: String,
-    @SerialName("content") val content: String
+    @SerialName("role") val role: String = "assistant",
+    @SerialName("content") val content: String = ""
 )
+

@@ -106,64 +106,76 @@ class TimetableFieldMapper @Inject constructor(
     }
 
     private fun parseDayOfWeek(text: String): Int? {
-        val lower = text.lowercase()
-        return when {
-            lower.contains("monday") || lower.contains("mon") -> 1
-            lower.contains("tuesday") || lower.contains("tue") -> 2
-            lower.contains("wednesday") || lower.contains("wed") -> 3
-            lower.contains("thursday") || lower.contains("thu") -> 4
-            lower.contains("friday") || lower.contains("fri") -> 5
-            lower.contains("saturday") || lower.contains("sat") -> 6
-            lower.contains("sunday") || lower.contains("sun") -> 7
-            else -> null
-        }
+        return TimeNormalizer.parseDayOfWeek(text)
     }
 
     private fun parseLineToSlot(line: String, dayOfWeek: Int, confidence: Float): ParsedTimetableSlot? {
-        val timeRegex = Regex("""(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)""")
-        val match = timeRegex.find(line) ?: return null
+        val timeMatch = TimeNormalizer.findTimeRangeMatch(line)
+        if (timeMatch != null) {
+            val startTime = timeMatch.startTime
+            val endTime = timeMatch.endTime
 
-        val rawStart = match.groupValues[1]
-        val rawEnd = match.groupValues[2]
+            var remainingText = line.removeRange(timeMatch.matchRange).trim()
+            if (remainingText.isBlank()) return null
 
-        val startTime = normalizeTime(rawStart)
-        val endTime = normalizeTime(rawEnd)
+            // Clean any leading period prefix, e.g. "Period 1:", "P1 -", "1. "
+            remainingText = remainingText.replace(Regex("""^(?:Period|Slot|P)\s*[-–:]?\s*\d+\s*[-–:)]*""", RegexOption.IGNORE_CASE), "").trim()
+            remainingText = remainingText.replace(Regex("""^\d+\.\s*"""), "").trim()
+            if (remainingText.isBlank()) return null
 
-        val remainingText = line.replace(match.value, "").trim()
-        if (remainingText.isBlank()) return null
+            val parts = remainingText.split(Regex("""[-–|()]""")).map { it.trim() }.filter { it.isNotBlank() }
+            val subjectName = parts.firstOrNull() ?: remainingText
+            val location = if (parts.size > 1) parts[1] else null
 
-        val parts = remainingText.split(Regex("""[-–|()]""")).map { it.trim() }.filter { it.isNotBlank() }
-        val subjectName = parts.firstOrNull() ?: remainingText
-        val location = if (parts.size > 1) parts[1] else null
+            val isLowConfidence = confidence < ParsedTimetableSlot.CONFIDENCE_THRESHOLD
 
-        val isLowConfidence = confidence < ParsedTimetableSlot.CONFIDENCE_THRESHOLD
+            return ParsedTimetableSlot(
+                dayOfWeek = dayOfWeek,
+                startTime = startTime,
+                endTime = endTime,
+                subjectName = subjectName,
+                location = location,
+                confidence = confidence,
+                isLowConfidence = isLowConfidence
+            )
+        }
 
-        return ParsedTimetableSlot(
-            dayOfWeek = dayOfWeek,
-            startTime = startTime,
-            endTime = endTime,
-            subjectName = subjectName,
-            location = location,
-            confidence = confidence,
-            isLowConfidence = isLowConfidence
-        )
+        // Check if line represents a safe period-number format without explicit times
+        // e.g. "Period 1: Mathematics - Room 101" or "P2 Mathematics"
+        val periodRegex = Regex("""^(?:Period|Slot|P)\s*[-–:]?\s*([1-9]|1[0-2])\b\s*[-–:(]*\s*(.+)$""", RegexOption.IGNORE_CASE)
+        val periodMatch = periodRegex.find(line)
+        if (periodMatch != null) {
+            val pNum = periodMatch.groupValues[1].toIntOrNull() ?: return null
+            val rawSubjectContent = periodMatch.groupValues[2].trim(' ', '-', '–', ':', ')', '(')
+            if (rawSubjectContent.isBlank()) return null
+
+            val parts = rawSubjectContent.split(Regex("""[-–|()]""")).map { it.trim() }.filter { it.isNotBlank() }
+            val subjectName = parts.firstOrNull() ?: rawSubjectContent
+            val location = if (parts.size > 1) parts[1] else null
+
+            val startHour = 7 + pNum
+            val startTime = String.format("%02d:00", startHour)
+            val endTime = String.format("%02d:55", startHour)
+
+            // Period-derived times without explicit clock times are flagged as low confidence
+            // so they are surfaced in the review/correction flow
+            val effectiveConfidence = minOf(confidence, 0.70f)
+
+            return ParsedTimetableSlot(
+                dayOfWeek = dayOfWeek,
+                startTime = startTime,
+                endTime = endTime,
+                subjectName = subjectName,
+                location = location,
+                confidence = effectiveConfidence,
+                isLowConfidence = true
+            )
+        }
+
+        return null
     }
 
     private fun normalizeTime(rawTime: String): String {
-        val clean = rawTime.trim().uppercase()
-        val isPm = clean.contains("PM")
-        val isAm = clean.contains("AM")
-        val timeOnly = clean.replace("AM", "").replace("PM", "").trim()
-
-        val parts = timeOnly.split(":")
-        if (parts.size != 2) return "09:00"
-
-        var hour = parts[0].toIntOrNull() ?: 9
-        val minute = parts[1].toIntOrNull() ?: 0
-
-        if (isPm && hour < 12) hour += 12
-        if (isAm && hour == 12) hour = 0
-
-        return String.format("%02d:%02d", hour, minute)
+        return TimeNormalizer.normalizeSingleTime(rawTime) ?: "09:00"
     }
 }

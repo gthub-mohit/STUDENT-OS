@@ -53,6 +53,15 @@ interface SettingsRepository {
     suspend fun getAiProvider(): String
     suspend fun setAiProvider(value: String)
 
+    suspend fun getOmniRouteBaseUrl(): String
+    suspend fun setOmniRouteBaseUrl(value: String)
+
+    suspend fun getOmniRouteModel(): String
+    suspend fun setOmniRouteModel(value: String)
+
+    suspend fun getOmniRouteApiKey(): String
+    suspend fun setOmniRouteApiKey(value: String)
+
     suspend fun getAiIntradayUpdatesEnabled(): Boolean
     suspend fun setAiIntradayUpdatesEnabled(value: Boolean)
 
@@ -119,6 +128,9 @@ interface SettingsRepository {
         const val KEY_OCR_CONFIDENCE_THRESHOLD = "ocr_confidence_threshold"
         const val KEY_AI_ENABLED = "ai_enabled"
         const val KEY_AI_PROVIDER = "ai_provider"
+        const val KEY_OMNIROUTE_BASE_URL = "omniroute_base_url"
+        const val KEY_OMNIROUTE_MODEL = "omniroute_model"
+        const val KEY_OMNIROUTE_API_KEY = "omniroute_api_key"
         const val KEY_AI_INTRADAY_UPDATES_ENABLED = "ai_intraday_updates_enabled"
         const val KEY_AI_MAX_CALLS_PER_DAY = "ai_max_calls_per_day"
         const val KEY_AI_CACHE_MAX_AGE_HOURS = "ai_cache_max_age_hours"
@@ -147,7 +159,12 @@ interface SettingsRepository {
         const val DEFAULT_SCORE_WEIGHT_DSA = 10
         const val DEFAULT_OCR_CONFIDENCE_THRESHOLD = 0.80f
         const val DEFAULT_AI_ENABLED = true
-        const val DEFAULT_AI_PROVIDER = "DEEPSEEK"
+        const val DEFAULT_AI_PROVIDER = "OMNIROUTE"
+        const val DEFAULT_OMNIROUTE_BASE_URL = "http://10.0.2.2:20128/v1/"
+        const val DEFAULT_OMNIROUTE_MODEL = "deepseek-chat"
+        const val PROVIDER_OMNIROUTE = "OMNIROUTE"
+        const val PROVIDER_DEEPSEEK = "DEEPSEEK"
+        const val PROVIDER_MOCK = "MOCK"
         const val DEFAULT_AI_INTRADAY_UPDATES_ENABLED = true
         const val DEFAULT_AI_MAX_CALLS_PER_DAY = 10
         const val DEFAULT_AI_CACHE_MAX_AGE_HOURS = 6

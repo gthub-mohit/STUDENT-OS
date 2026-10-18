@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Permits cleartext HTTP traffic to local addresses (emulator loopback, adb reverse, localhost)
+      so local OmniRoute gateway instances can be reached without HTTPS requirement.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
+
+    <!--
+      Permit cleartext in debug builds for arbitrary local LAN IPs (e.g. 192.168.x.x)
+      when developers run OmniRoute on their workstation and connect via Wi-Fi.
+    -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

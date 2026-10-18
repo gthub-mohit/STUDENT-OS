@@ -59,6 +59,7 @@ import com.studentos.feature.attendance.presentation.viewmodel.EditTimetableView
 fun EditTimetableScreen(
     viewModel: EditTimetableViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToManageSubjects: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -73,6 +74,11 @@ fun EditTimetableScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onNavigateToManageSubjects) {
+                        Text("Subjects")
                     }
                 }
             )

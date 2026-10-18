@@ -31,6 +31,8 @@ import com.studentos.feature.intelligence.navigation.intelligenceNavGraph
 
 import com.studentos.feature.settings.navigation.settingsNavGraph
 
+import androidx.compose.material.icons.filled.Star
+
 /**
  * Initializes the default module registry graphs and bottom navigation destinations.
  * Safe to call multiple times (idempotent).
@@ -38,25 +40,42 @@ import com.studentos.feature.settings.navigation.settingsNavGraph
 fun initDefaultModuleRegistry() {
     if (ModuleRegistry.graphs.isNotEmpty()) return
 
-    // 1. Intelligence / Home + Daily Brief
+    // 1. Focus & Journal (Tab 1 — Start Destination)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "intelligence"
         override val navItem = NavigationItem(
-            route = "home",
-            title = "Home",
-            icon = Icons.Default.Home
+            route = "focus",
+            title = "Focus",
+            icon = Icons.Default.Edit
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
             builder.intelligenceNavGraph(navController)
         }
     })
 
-    // 2. Attendance Module
+    // 2. Trajectory & Goals (Tab 2)
+    ModuleRegistry.register(object : ModuleNavGraph {
+        override val baseRoute = "trajectory"
+        override val navItem = NavigationItem(
+            route = "trajectory",
+            title = "Goals",
+            icon = Icons.Default.Star
+        )
+        override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
+            builder.composable("trajectory") {
+                com.studentos.feature.intelligence.presentation.screen.TrajectoryGoalsRoute(
+                    onSettingsClick = { navController.navigate("settings/main") }
+                )
+            }
+        }
+    })
+
+    // 3. Attendance Module (Tab 3 — Preserved)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "attendance"
         override val navItem = NavigationItem(
             route = "weekly",
-            title = "Attend",
+            title = "Attendance",
             icon = Icons.Default.DateRange
         )
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
@@ -64,40 +83,28 @@ fun initDefaultModuleRegistry() {
         }
     })
 
-    // 3. Assignments Module
+    // 4. Assignments Module (Background graph)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "assignments"
-        override val navItem = NavigationItem(
-            route = "assignments/list",
-            title = "Tasks",
-            icon = Icons.Default.Edit
-        )
+        override val navItem = null
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
             builder.assignmentsNavGraph(navController)
         }
     })
 
-    // 4. Coding Module
+    // 5. Coding Module (Background graph)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "coding"
-        override val navItem = NavigationItem(
-            route = CodingNavGraph.ROUTE_CP_DASHBOARD,
-            title = "Code",
-            icon = Icons.Default.Build
-        )
+        override val navItem = null
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
             builder.codingNavGraph(navController)
         }
     })
 
-    // 5. Projects Module
+    // 6. Projects Module (Background graph)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "projects"
-        override val navItem = NavigationItem(
-            route = "projects/list",
-            title = "Projects",
-            icon = Icons.AutoMirrored.Filled.List
-        )
+        override val navItem = null
         override fun registerGraph(builder: NavGraphBuilder, navController: NavHostController) {
             builder.composable("projects/list") {
                 com.studentos.feature.projects.presentation.screen.ProjectsRoute(
@@ -129,7 +136,7 @@ fun initDefaultModuleRegistry() {
         }
     })
 
-    // 6. Settings Module
+    // 7. Settings Module (Accessible via top bar)
     ModuleRegistry.register(object : ModuleNavGraph {
         override val baseRoute = "settings"
         override val navItem = null
@@ -146,7 +153,7 @@ fun initDefaultModuleRegistry() {
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = "home"
+    startDestination: String = "focus"
 ) {
     initDefaultModuleRegistry()
 

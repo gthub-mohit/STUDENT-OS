@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studentos.core.events.AppResult
 import com.studentos.feature.attendance.data.ocr.OcrProcessor
+import com.studentos.feature.attendance.data.ocr.TimetableValidator
 import com.studentos.feature.attendance.domain.model.ParsedTimetableSlot
 import com.studentos.feature.attendance.domain.usecase.ImportTimetableUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,8 @@ sealed interface OcrUiState {
 @HiltViewModel
 class OcrViewModel @Inject constructor(
     private val ocrProcessor: OcrProcessor,
-    private val importTimetableUseCase: ImportTimetableUseCase
+    private val importTimetableUseCase: ImportTimetableUseCase,
+    private val validator: TimetableValidator = TimetableValidator()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OcrUiState>(OcrUiState.Idle)
@@ -52,7 +54,7 @@ class OcrViewModel @Inject constructor(
         val currentState = _uiState.value as? OcrUiState.Content ?: return
         val updatedList = currentState.slots + slot
         val hasWarnings = updatedList.any { it.isLowConfidence }
-        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings)
+        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings, errorMessage = null)
     }
 
     fun updateSlot(index: Int, updatedSlot: ParsedTimetableSlot) {
@@ -66,7 +68,7 @@ class OcrViewModel @Inject constructor(
             }
         }
         val hasWarnings = updatedList.any { it.isLowConfidence }
-        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings)
+        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings, errorMessage = null)
     }
 
     fun removeSlot(index: Int) {
@@ -77,11 +79,25 @@ class OcrViewModel @Inject constructor(
             }
         }
         val hasWarnings = updatedList.any { it.isLowConfidence }
-        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings)
+        _uiState.value = currentState.copy(slots = updatedList, hasWarnings = hasWarnings, errorMessage = null)
     }
 
     fun confirmImport(replaceExisting: Boolean = false) {
         val currentState = _uiState.value as? OcrUiState.Content ?: return
+
+        if (currentState.slots.isEmpty()) {
+            _uiState.value = currentState.copy(errorMessage = "Cannot import an empty timetable. Please add at least one slot.")
+            return
+        }
+
+        val invalidSlots = currentState.slots.filterNot { validator.isValid(it) }
+        if (invalidSlots.isNotEmpty()) {
+            _uiState.value = currentState.copy(
+                errorMessage = "Please review and complete all required fields. Some slots have missing subjects or invalid times."
+            )
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             val result = importTimetableUseCase(
                 slots = currentState.slots,
@@ -93,7 +109,7 @@ class OcrViewModel @Inject constructor(
                 }
                 is AppResult.Failure -> {
                     if (!replaceExisting) {
-                        _uiState.value = currentState.copy(showReplaceDialog = true)
+                        _uiState.value = currentState.copy(showReplaceDialog = true, errorMessage = null)
                     } else {
                         _uiState.value = OcrUiState.Error("Import Failed: ${result.reason}")
                     }
@@ -105,5 +121,10 @@ class OcrViewModel @Inject constructor(
     fun dismissReplaceDialog() {
         val currentState = _uiState.value as? OcrUiState.Content ?: return
         _uiState.value = currentState.copy(showReplaceDialog = false)
+    }
+
+    fun dismissError() {
+        val currentState = _uiState.value as? OcrUiState.Content ?: return
+        _uiState.value = currentState.copy(errorMessage = null)
     }
 }

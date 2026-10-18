@@ -11,7 +11,25 @@ import com.studentos.feature.intelligence.presentation.screen.HomeRoute
 
 fun NavGraphBuilder.intelligenceNavGraph(navController: NavHostController) {
 
-    // ── Home Screen (start destination) ────────────────────────────────────
+    // ── Focus & Journal Screen (Primary Start Destination) ──────────────────
+    composable(route = "focus") {
+        com.studentos.feature.intelligence.presentation.screen.FocusJournalRoute(
+            onSettingsClick = {
+                navController.navigate("settings/main")
+            }
+        )
+    }
+
+    // ── Trajectory & Goals Screen ──────────────────────────────────────────
+    composable(route = "trajectory") {
+        com.studentos.feature.intelligence.presentation.screen.TrajectoryGoalsRoute(
+            onSettingsClick = {
+                navController.navigate("settings/main")
+            }
+        )
+    }
+
+    // ── Home Screen ────────────────────────────────────────────────────────
     composable(route = "home") {
         HomeRoute(
             onDailyBriefClick = {

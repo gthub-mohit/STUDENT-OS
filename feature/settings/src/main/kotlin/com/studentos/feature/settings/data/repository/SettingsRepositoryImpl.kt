@@ -2,6 +2,8 @@ package com.studentos.feature.settings.data.repository
 
 import com.studentos.core.database.dao.SettingsDao
 import com.studentos.core.database.entity.SettingEntity
+import com.studentos.core.intelligence.security.CredentialMigrator
+import com.studentos.core.intelligence.security.SecureCredentialStorage
 import com.studentos.feature.settings.domain.model.SettingsDomain
 import com.studentos.feature.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +16,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class SettingsRepositoryImpl @Inject constructor(
-    private val settingsDao: SettingsDao
+    private val settingsDao: SettingsDao,
+    private val secureStorage: SecureCredentialStorage
 ) : SettingsRepository {
 
     override fun observeAllSettings(): Flow<SettingsDomain> {
@@ -29,7 +32,16 @@ class SettingsRepositoryImpl @Inject constructor(
         return mapToDomain(map)
     }
 
-    private fun mapToDomain(map: Map<String, String>): SettingsDomain {
+    private suspend fun mapToDomain(map: Map<String, String>): SettingsDomain {
+        val deepSeekKey = runCatching { secureStorage.getCredential(CredentialMigrator.KEY_SECURE_DEEPSEEK_API_KEY) }
+            .getOrNull()?.trim()
+            ?: map[SettingsRepository.KEY_DEEPSEEK_API_KEY]
+            ?: ""
+        val omniRouteKey = runCatching { secureStorage.getCredential(CredentialMigrator.KEY_SECURE_OMNIROUTE_API_KEY) }
+            .getOrNull()?.trim()
+            ?: ""
+
+
         return SettingsDomain(
             attendanceThreshold = map[SettingsRepository.KEY_ATTENDANCE_THRESHOLD]?.toIntOrNull()
                 ?: SettingsRepository.DEFAULT_ATTENDANCE_THRESHOLD,
@@ -57,6 +69,11 @@ class SettingsRepositoryImpl @Inject constructor(
                 ?: SettingsRepository.DEFAULT_AI_ENABLED,
             aiProvider = map[SettingsRepository.KEY_AI_PROVIDER]
                 ?: SettingsRepository.DEFAULT_AI_PROVIDER,
+            omniRouteBaseUrl = map[SettingsRepository.KEY_OMNIROUTE_BASE_URL]
+                ?: SettingsRepository.DEFAULT_OMNIROUTE_BASE_URL,
+            omniRouteModel = map[SettingsRepository.KEY_OMNIROUTE_MODEL]
+                ?: SettingsRepository.DEFAULT_OMNIROUTE_MODEL,
+            omniRouteApiKey = omniRouteKey,
             aiIntradayUpdatesEnabled = map[SettingsRepository.KEY_AI_INTRADAY_UPDATES_ENABLED]?.toBooleanStrictOrNull()
                 ?: SettingsRepository.DEFAULT_AI_INTRADAY_UPDATES_ENABLED,
             aiMaxCallsPerDay = map[SettingsRepository.KEY_AI_MAX_CALLS_PER_DAY]?.toIntOrNull()
@@ -67,7 +84,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 ?: SettingsRepository.DEFAULT_AI_TONE_PREFERENCE,
             codeChefHandle = map[SettingsRepository.KEY_HANDLE_CODECHEF] ?: "",
             codeforcesHandle = map[SettingsRepository.KEY_HANDLE_CODEFORCES] ?: "",
-            deepSeekApiKey = map[SettingsRepository.KEY_DEEPSEEK_API_KEY] ?: "",
+            deepSeekApiKey = deepSeekKey,
             notificationDailyBriefEnabled = map[SettingsRepository.KEY_NOTIFICATION_DAILY_BRIEF_ENABLED]?.toBooleanStrictOrNull() ?: true,
             notificationAssignmentReminderEnabled = map[SettingsRepository.KEY_NOTIFICATION_ASSIGNMENT_REMINDER_ENABLED]?.toBooleanStrictOrNull() ?: true,
             notificationClassReminderEnabled = map[SettingsRepository.KEY_NOTIFICATION_CLASS_REMINDER_ENABLED]?.toBooleanStrictOrNull() ?: true,
@@ -157,6 +174,31 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setAiProvider(value: String) =
         set(SettingsRepository.KEY_AI_PROVIDER, value)
 
+    override suspend fun getOmniRouteBaseUrl(): String =
+        getString(SettingsRepository.KEY_OMNIROUTE_BASE_URL, SettingsRepository.DEFAULT_OMNIROUTE_BASE_URL)
+
+    override suspend fun setOmniRouteBaseUrl(value: String) =
+        set(SettingsRepository.KEY_OMNIROUTE_BASE_URL, value.trim())
+
+    override suspend fun getOmniRouteModel(): String =
+        getString(SettingsRepository.KEY_OMNIROUTE_MODEL, SettingsRepository.DEFAULT_OMNIROUTE_MODEL)
+
+    override suspend fun setOmniRouteModel(value: String) =
+        set(SettingsRepository.KEY_OMNIROUTE_MODEL, value.trim())
+
+    override suspend fun getOmniRouteApiKey(): String =
+        runCatching { secureStorage.getCredential(CredentialMigrator.KEY_SECURE_OMNIROUTE_API_KEY) }
+            .getOrNull()?.trim() ?: ""
+
+    override suspend fun setOmniRouteApiKey(value: String) {
+        val clean = value.trim()
+        if (clean.isNotBlank()) {
+            runCatching { secureStorage.saveCredential(CredentialMigrator.KEY_SECURE_OMNIROUTE_API_KEY, clean) }
+        } else {
+            runCatching { secureStorage.removeCredential(CredentialMigrator.KEY_SECURE_OMNIROUTE_API_KEY) }
+        }
+    }
+
     override suspend fun getAiIntradayUpdatesEnabled(): Boolean =
         getBoolean(SettingsRepository.KEY_AI_INTRADAY_UPDATES_ENABLED, SettingsRepository.DEFAULT_AI_INTRADAY_UPDATES_ENABLED)
 
@@ -194,10 +236,21 @@ class SettingsRepositoryImpl @Inject constructor(
         set(SettingsRepository.KEY_HANDLE_CODEFORCES, value)
 
     override suspend fun getDeepSeekApiKey(): String =
-        getString(SettingsRepository.KEY_DEEPSEEK_API_KEY, "")
+        runCatching { secureStorage.getCredential(CredentialMigrator.KEY_SECURE_DEEPSEEK_API_KEY) }
+            .getOrNull()?.trim()
+            ?: getString(SettingsRepository.KEY_DEEPSEEK_API_KEY, "")
 
-    override suspend fun setDeepSeekApiKey(value: String) =
-        set(SettingsRepository.KEY_DEEPSEEK_API_KEY, value)
+    override suspend fun setDeepSeekApiKey(value: String) {
+        val clean = value.trim()
+        if (clean.isNotBlank()) {
+            runCatching { secureStorage.saveCredential(CredentialMigrator.KEY_SECURE_DEEPSEEK_API_KEY, clean) }
+            settingsDao.delete(SettingsRepository.KEY_DEEPSEEK_API_KEY)
+        } else {
+            runCatching { secureStorage.removeCredential(CredentialMigrator.KEY_SECURE_DEEPSEEK_API_KEY) }
+            settingsDao.delete(SettingsRepository.KEY_DEEPSEEK_API_KEY)
+        }
+    }
+
 
     override suspend fun getNotificationDailyBriefEnabled(): Boolean =
         getBoolean(SettingsRepository.KEY_NOTIFICATION_DAILY_BRIEF_ENABLED, true)
@@ -255,6 +308,8 @@ class SettingsRepositoryImpl @Inject constructor(
         setOcrConfidenceThreshold(SettingsRepository.DEFAULT_OCR_CONFIDENCE_THRESHOLD)
         setAiEnabled(SettingsRepository.DEFAULT_AI_ENABLED)
         setAiProvider(SettingsRepository.DEFAULT_AI_PROVIDER)
+        setOmniRouteBaseUrl(SettingsRepository.DEFAULT_OMNIROUTE_BASE_URL)
+        setOmniRouteModel(SettingsRepository.DEFAULT_OMNIROUTE_MODEL)
         setAiIntradayUpdatesEnabled(SettingsRepository.DEFAULT_AI_INTRADAY_UPDATES_ENABLED)
         setAiMaxCallsPerDay(SettingsRepository.DEFAULT_AI_MAX_CALLS_PER_DAY)
         setAiCacheMaxAgeHours(SettingsRepository.DEFAULT_AI_CACHE_MAX_AGE_HOURS)

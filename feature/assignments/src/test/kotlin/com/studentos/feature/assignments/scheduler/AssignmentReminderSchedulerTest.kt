@@ -26,6 +26,9 @@ class AssignmentReminderSchedulerTest {
         override suspend fun set(setting: SettingEntity) {
             settingsMap[setting.key] = setting.value
         }
+        override suspend fun delete(key: String) {
+            settingsMap.remove(key)
+        }
     }
 
     private class FakeExactAlarmScheduler : ExactAlarmScheduler {

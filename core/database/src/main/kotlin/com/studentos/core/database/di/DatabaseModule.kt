@@ -5,16 +5,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.studentos.core.database.AppDatabase
+import com.studentos.core.database.dao.ActivityLogDao
 import com.studentos.core.database.dao.AiCallLogDao
 import com.studentos.core.database.dao.AssignmentDao
 import com.studentos.core.database.dao.BugDao
 import com.studentos.core.database.dao.ClassEventDao
+import com.studentos.core.database.dao.CommitmentDao
 import com.studentos.core.database.dao.CpContestDao
 import com.studentos.core.database.dao.CpProfileDao
 import com.studentos.core.database.dao.CpReflectionDao
 import com.studentos.core.database.dao.DailyBriefDao
 import com.studentos.core.database.dao.DsaCategoryDao
 import com.studentos.core.database.dao.DsaTopicDao
+import com.studentos.core.database.dao.GoalDao
+import com.studentos.core.database.dao.JournalDao
 import com.studentos.core.database.dao.MilestoneDao
 import com.studentos.core.database.dao.ProjectDao
 import com.studentos.core.database.dao.ProjectResourceDao
@@ -29,6 +33,10 @@ import com.studentos.core.database.migration.MIGRATION_3_4
 import com.studentos.core.database.migration.MIGRATION_1_3
 import com.studentos.core.database.migration.MIGRATION_2_4
 import com.studentos.core.database.migration.MIGRATION_1_4
+import com.studentos.core.database.migration.MIGRATION_4_5
+import com.studentos.core.database.migration.MIGRATION_3_5
+import com.studentos.core.database.migration.MIGRATION_2_5
+import com.studentos.core.database.migration.MIGRATION_1_5
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -61,9 +69,12 @@ object DatabaseModule {
                 MIGRATION_3_4,
                 MIGRATION_1_3,
                 MIGRATION_2_4,
-                MIGRATION_1_4
+                MIGRATION_1_4,
+                MIGRATION_4_5,
+                MIGRATION_3_5,
+                MIGRATION_2_5,
+                MIGRATION_1_5
             )
-            .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -134,4 +145,17 @@ object DatabaseModule {
 
     @Provides
     fun provideAiCallLogDao(database: AppDatabase): AiCallLogDao = database.aiCallLogDao()
+
+    @Provides
+    fun provideGoalDao(database: AppDatabase): GoalDao = database.goalDao()
+
+    @Provides
+    fun provideCommitmentDao(database: AppDatabase): CommitmentDao = database.commitmentDao()
+
+    @Provides
+    fun provideActivityLogDao(database: AppDatabase): ActivityLogDao = database.activityLogDao()
+
+    @Provides
+    fun provideJournalDao(database: AppDatabase): JournalDao = database.journalDao()
 }
+

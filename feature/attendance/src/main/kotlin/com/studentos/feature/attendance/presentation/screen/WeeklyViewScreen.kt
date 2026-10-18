@@ -57,6 +57,7 @@ fun WeeklyViewScreen(
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToEditTimetable: () -> Unit = {},
     onNavigateToOcrPreview: () -> Unit = {},
+    onNavigateToManageSubjects: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -88,6 +89,13 @@ fun WeeklyViewScreen(
                                 onClick = {
                                     showOverflowMenu = false
                                     onNavigateToEditTimetable()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Manage Subjects") },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onNavigateToManageSubjects()
                                 }
                             )
                             DropdownMenuItem(

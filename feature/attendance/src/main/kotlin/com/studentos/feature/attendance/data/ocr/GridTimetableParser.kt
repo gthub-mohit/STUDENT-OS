@@ -179,17 +179,7 @@ class GridTimetableParser @Inject constructor(
     }
 
     private fun parseDayOfWeek(text: String): Int? {
-        val clean = text.trim().lowercase()
-        return when {
-            clean.matches(Regex("""^(?:mon|monday)$""")) -> 1
-            clean.matches(Regex("""^(?:tue|tues|tuesday)$""")) -> 2
-            clean.matches(Regex("""^(?:wed|wednesday)$""")) -> 3
-            clean.matches(Regex("""^(?:thu|thur|thurs|thursday)$""")) -> 4
-            clean.matches(Regex("""^(?:fri|friday)$""")) -> 5
-            clean.matches(Regex("""^(?:sat|saturday)$""")) -> 6
-            clean.matches(Regex("""^(?:sun|sunday)$""")) -> 7
-            else -> null
-        }
+        return TimeNormalizer.parseDayOfWeek(text)
     }
 
     private fun formatDayName(dayOfWeek: Int): String {
@@ -212,24 +202,23 @@ class GridTimetableParser @Inject constructor(
     private fun detectPeriodColumns(elements: List<OcrTextElement>, headerBottomCutoff: Int): List<PeriodColumn> {
         val headerElements = elements.filter { it.rect.bottom <= headerBottomCutoff + 50 }
 
-        // 1. Time range headers: "8:00 - 8:55", "09:00-09:55", etc.
-        val timeRegex = Regex("""(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)""")
+        // 1. Time range headers: "8:00 - 8:55", "09:00-09:55", "9.00 - 9.55", "9-10 AM", etc.
         val timeMatches = mutableListOf<Triple<String, String, OcrRect>>()
 
         for (elem in headerElements) {
-            val match = timeRegex.find(elem.text)
-            if (match != null) {
-                val start = normalizeTime(match.groupValues[1])
-                val end = normalizeTime(match.groupValues[2])
-                timeMatches.add(Triple(start, end, elem.rect))
+            val rangeMatch = TimeNormalizer.findTimeRangeMatch(elem.text)
+            if (rangeMatch != null) {
+                timeMatches.add(Triple(rangeMatch.startTime, rangeMatch.endTime, elem.rect))
             }
         }
 
-        // 2. Period number headers: "1", "2", "3" ... "10"
-        val periodNumberRegex = Regex("""^\b([1-9]|1[0-2])\b$""")
+        // 2. Period number headers: "1", "2", "3" ... "10", "Period 1", "P1", "Slot 1"
         val periodNumberMatches = headerElements
-            .filter { periodNumberRegex.matches(it.text.trim()) }
-            .sortedBy { it.rect.centerX }
+            .mapNotNull { elem ->
+                val pNum = TimeNormalizer.parsePeriodHeader(elem.text)
+                if (pNum != null) pNum to elem else null
+            }
+            .sortedBy { it.second.rect.centerX }
 
         if (timeMatches.isNotEmpty()) {
             val sortedTimes = timeMatches.sortedBy { it.third.centerX }
@@ -273,19 +262,18 @@ class GridTimetableParser @Inject constructor(
         // Fallback: If only period numbers exist without explicit times
         if (periodNumberMatches.isNotEmpty()) {
             val colPitch = if (periodNumberMatches.size >= 2) {
-                (periodNumberMatches.last().rect.centerX - periodNumberMatches.first().rect.centerX).toDouble() / (periodNumberMatches.size - 1)
+                (periodNumberMatches.last().second.rect.centerX - periodNumberMatches.first().second.rect.centerX).toDouble() / (periodNumberMatches.size - 1)
             } else {
-                periodNumberMatches.first().rect.width.toDouble().coerceAtLeast(80.0)
+                periodNumberMatches.first().second.rect.width.toDouble().coerceAtLeast(80.0)
             }
 
             val columns = mutableListOf<PeriodColumn>()
             for (i in periodNumberMatches.indices) {
-                val elem = periodNumberMatches[i]
-                val pNum = elem.text.trim().toIntOrNull() ?: (i + 1)
+                val (pNum, elem) = periodNumberMatches[i]
                 val cx = elem.rect.centerX
 
-                val left = if (i == 0) (cx - colPitch / 2).toInt() else (periodNumberMatches[i - 1].rect.centerX + cx) / 2
-                val right = if (i == periodNumberMatches.size - 1) (cx + colPitch / 2).toInt() else (cx + periodNumberMatches[i + 1].rect.centerX) / 2
+                val left = if (i == 0) (cx - colPitch / 2).toInt() else (periodNumberMatches[i - 1].second.rect.centerX + cx) / 2
+                val right = if (i == periodNumberMatches.size - 1) (cx + colPitch / 2).toInt() else (cx + periodNumberMatches[i + 1].second.rect.centerX) / 2
 
                 val startHour = 7 + pNum
                 val startStr = String.format("%02d:00", startHour)
@@ -379,18 +367,33 @@ class GridTimetableParser @Inject constructor(
 
             for (i in sortedSubjects.indices) {
                 val (subjCode, subjElem) = sortedSubjects[i]
-                val subjSpanWidth = subjElem.rect.width
+                // STEP 1: Determine covered columns based on normalized column overlap.
+                // A column is "covered" if >= MIN_OVERLAP_RATIO of the column
+                // width is physically overlapped by the subject bbox.
+                val subjLeft = subjElem.rect.left
+                val subjRight = subjElem.rect.right
 
-                // STEP 1: Determine if the SUBJECT bounding box itself genuinely
-                // spans multiple period columns. This is the primary gate — minor
-                // OCR boundary noise CANNOT convert a single-period class into merged.
-                val isSubjMerged = subjSpanWidth > avgColWidth * 1.45
+                val coveredColumns = sortedColumns.filter { col ->
+                    val colWidth = (col.right - col.left).coerceAtLeast(1)
+                    val overlapLeft = maxOf(subjLeft, col.left)
+                    val overlapRight = minOf(subjRight, col.right)
+                    val overlapWidth = (overlapRight - overlapLeft).coerceAtLeast(0)
+                    val ratio = overlapWidth.toFloat() / colWidth
+                    ratio >= MIN_OVERLAP_RATIO
+                }
+
+                val isSubjMerged = coveredColumns.size > 1
 
                 val prevSubjX = if (i > 0) sortedSubjects[i - 1].second.rect.centerX else Int.MIN_VALUE
                 val nextSubjX = if (i < sortedSubjects.size - 1) sortedSubjects[i + 1].second.rect.centerX else Int.MAX_VALUE
 
                 // Collect elements belonging strictly to this course cell in X-space
-                val maxAllowedDistance = if (isSubjMerged) avgColWidth * 1.8 else avgColWidth * 0.70
+                val maxAllowedDistance = if (isSubjMerged) {
+                    val spanWidth = (coveredColumns.last().right - coveredColumns.first().left).toDouble()
+                    spanWidth * 0.90
+                } else {
+                    avgColWidth * 0.70
+                }
                 val associatedElements = rowElements.filter { elem ->
                     val cx = elem.rect.centerX
                     val distToSubj = Math.abs(cx - subjElem.rect.centerX)
@@ -403,39 +406,15 @@ class GridTimetableParser @Inject constructor(
                 val maxRight = associatedElements.maxOfOrNull { it.rect.right } ?: subjElem.rect.right
 
                 // STEP 2: Determine Start Column & End Column
-                val (startCol, endCol) = if (isSubjMerged) {
-                    // Merged cell: use the SUBJECT bounding box (not the full
-                    // associated cluster) to compute normalized column overlap.
-                    // A column is "covered" if >= MIN_OVERLAP_RATIO of the column
-                    // width is physically overlapped by the subject bbox.
-                    val subjLeft = subjElem.rect.left
-                    val subjRight = subjElem.rect.right
-
-                    val coveredColumns = sortedColumns.filter { col ->
-                        val colWidth = (col.right - col.left).coerceAtLeast(1)
-                        val overlapLeft = maxOf(subjLeft, col.left)
-                        val overlapRight = minOf(subjRight, col.right)
-                        val overlapWidth = (overlapRight - overlapLeft).coerceAtLeast(0)
-                        val ratio = overlapWidth.toFloat() / colWidth
-                        ratio >= MIN_OVERLAP_RATIO
-                    }
-
-                    if (coveredColumns.isNotEmpty()) {
-                        coveredColumns.first() to coveredColumns.last()
-                    } else {
-                        // Fallback: find closest column to subject center
+                val (startCol, endCol) = when {
+                    coveredColumns.size > 1 -> coveredColumns.first() to coveredColumns.last()
+                    coveredColumns.size == 1 -> coveredColumns.first() to coveredColumns.first()
+                    else -> {
                         val closest = sortedColumns.minByOrNull { col ->
-                            Math.abs(col.centerX - subjElem.rect.centerX)
+                            if (subjElem.rect.centerX in col.left..col.right) 0 else Math.abs(col.centerX - subjElem.rect.centerX)
                         } ?: sortedColumns.first()
                         closest to closest
                     }
-                } else {
-                    // Single-period class: find the column containing/closest
-                    // to the subject's center point
-                    val sCol = sortedColumns.minByOrNull { col ->
-                        if (subjElem.rect.centerX in col.left..col.right) 0 else Math.abs(col.centerX - subjElem.rect.centerX)
-                    } ?: sortedColumns.first()
-                    sCol to sCol
                 }
 
                 val combinedText = associatedElements.joinToString("\n") { it.text }
@@ -578,16 +557,27 @@ class GridTimetableParser @Inject constructor(
                     .filterNot { isBoilerplateToken(it) }
                     .filterNot { it.matches(Regex("""^\d{1,2}:\d{2}$""")) }
                     .filterNot { it.matches(Regex("""^\d+$""")) }
-                    .filterNot { isAmbiguousToken(it) }
+                    .filter { token -> token.any { it.isLetter() } }
+                    .filter { token -> token.count { it.isLetterOrDigit() || it == '-' || it == '&' }.toFloat() / token.length >= 0.75f }
+
+                if (cleanLine.isEmpty()) continue
+
+                // If single token and ambiguous (e.g. "PKM", "SwK", "Xb4"), reject it
+                if (cleanLine.size == 1 && isAmbiguousToken(cleanLine.first())) continue
+
+                // If all tokens are short uppercase initials (e.g. "TN HN", "PKM SKK", "SKS VK"), reject it
+                val allShortInitials = cleanLine.all { token ->
+                    token.length <= 4 && token.all { it.isUpperCase() } && !token.any { it.isDigit() }
+                }
+                if (allShortInitials) continue
 
                 // Require either a multi-word name or a single word that
-                // clearly looks like a course name (>= 5 chars, has mixed case).
+                // clearly looks like a course name (>= 5 chars, has mixed case or uppercase word >= 6 chars).
                 val candidateName = cleanLine.joinToString(" ")
-                if (candidateName.length >= 5 &&
-                    candidateName.first().isUpperCase() &&
-                    candidateName.any { it.isLowerCase() }
-                ) {
-                    return candidateName
+                if (candidateName.length >= 5 && candidateName.first().isUpperCase()) {
+                    if (candidateName.any { it.isLowerCase() } || cleanLine.size >= 2 || candidateName.length >= 6) {
+                        return candidateName
+                    }
                 }
             }
         }
@@ -769,21 +759,7 @@ class GridTimetableParser @Inject constructor(
     }
 
     private fun normalizeTime(rawTime: String): String {
-        val clean = rawTime.trim().uppercase()
-        val isPm = clean.contains("PM")
-        val isAm = clean.contains("AM")
-        val timeOnly = clean.replace("AM", "").replace("PM", "").trim()
-
-        val parts = timeOnly.split(":")
-        if (parts.size != 2) return "08:00"
-
-        var hour = parts[0].toIntOrNull() ?: 8
-        val minute = parts[1].toIntOrNull() ?: 0
-
-        if (isPm && hour < 12) hour += 12
-        if (isAm && hour == 12) hour = 0
-
-        return String.format("%02d:%02d", hour, minute)
+        return TimeNormalizer.normalizeSingleTime(rawTime) ?: "08:00"
     }
 
     private fun logDiag(message: String) {

@@ -2,6 +2,7 @@ package com.studentos.core.intelligence.di
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.studentos.core.intelligence.api.DeepSeekApiService
+import com.studentos.core.intelligence.api.OmniRouteApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -59,4 +60,47 @@ object IntelligenceNetworkModule {
     ): DeepSeekApiService {
         return retrofit.create(DeepSeekApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    @Named("omniroute")
+    fun provideOmniRouteOkHttpClient(): OkHttpClient {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+        }
+        return OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("omniroute")
+    fun provideOmniRouteRetrofit(
+        @Named("omniroute") okHttpClient: OkHttpClient
+    ): Retrofit {
+        val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            coerceInputValues = true
+        }
+        // Base URL is a placeholder because OmniRouteApiService uses dynamic @Url parameters
+        return Retrofit.Builder()
+            .baseUrl("http://127.0.0.1:20128/")
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideOmniRouteApiService(
+        @Named("omniroute") retrofit: Retrofit
+    ): OmniRouteApiService {
+        return retrofit.create(OmniRouteApiService::class.java)
+    }
 }
+
